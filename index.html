@@ -233,7 +233,7 @@ function render(){
   let body='';
   if(V.name==='home')body=viewHome();
   else if(V.name==='patients')body=viewPatients();
-  else if(V.name==='newp')body=viewNewPatient();
+  else if(V.name==='newp'||V.name==='editp')body=viewNewPatient();
   else if(V.name==='patient')body=viewPatient();
   else if(V.name==='mark')body=viewMark();
   else if(V.name==='orders')body=viewOrders();
@@ -298,7 +298,7 @@ function viewHome(){
   <div class="card"><h2>今日值班 <span class="pill">範例班表</span></h2>
    <dl class="duty"><dt>醫師</dt><dd>林涵威、周厚江、蔡世軒、尹姵今</dd><dt>櫃檯主管</dt><dd>早：儒瑩／午：苡薇／晚：暐涵</dd><dt>諮詢師</dt><dd>苡薇</dd><dt>流動</dt><dd>雅筑</dd><dt>會議</dt><dd>今日無（明天：諮詢會，請苡薇準備報表）</dd></dl></div>
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">待處理個案</h2><button class="btn pri sm" onclick="go('newp')">＋新增病人</button></div>
-   <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${h(x.p.name)}</b><span class="muted">${h(x.p.chart)}・${h(x.p.doctor)} 醫師</span></div><span class="pill ${x.c}">${h(x.t)}</span></div>`).join(''):'<p class="muted">目前沒有待辦。按「＋新增病人」開始試用。</p>'}</div></div>`;
+   <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${h(x.p.name)}</b><span class="muted">${h(x.p.chart||'病歷號待補')}・${x.p.doctor?h(x.p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${x.c}">${h(x.t)}</span></div>`).join(''):'<p class="muted">目前沒有待辦。按「＋新增病人」開始試用。</p>'}</div></div>`;
 }
 
 /* ---- 患者 ---- */
@@ -308,34 +308,40 @@ function viewPatients(){
   const list=S.patients.filter(p=>!k||p.name.includes(k)||p.chart.includes(k));
   return `<h1>患者查詢</h1>
   <div class="row" style="margin-bottom:12px"><input class="i grow" id="q" placeholder="搜尋姓名或病歷號" value="${h(k)}" oninput="tmp.q=this.value;render();setTimeout(()=>{const e=document.getElementById('q');e.focus();e.setSelectionRange(e.value.length,e.value.length)})"><button class="btn pri" onclick="go('newp')">＋新增</button></div>
-  <div class="card list">${list.length?list.map(p=>{const s=stageOf(p);return `<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.name)}</b><span class="muted">${h(p.chart)}・${h(p.doctor)} 醫師・諮詢 ${h(p.consult)}</span></div><span class="pill ${s[1]}">${h(s[0])}</span></div>`}).join(''):'<p class="muted">沒有符合的病人。</p>'}</div>`;
+  <div class="card list">${list.length?list.map(p=>{const s=stageOf(p);return `<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.name)}</b><span class="muted">${h(p.chart||'病歷號待補')}・${p.doctor?h(p.doctor)+' 醫師':'醫師待補'}・諮詢 ${h(p.consult||'待補')}</span></div><span class="pill ${s[1]}">${h(s[0])}</span></div>`}).join(''):'<p class="muted">沒有符合的病人。</p>'}</div>`;
 }
 function viewNewPatient(){
-  const opt=(arr,sel)=>arr.map(x=>`<option ${x===sel?'selected':''}>${h(x)}</option>`).join('');
-  return `<h1>新增病人</h1>
+  const p=V.name==='editp'?P(V.pid):null;
+  if(p&&tmp.x===undefined)tmp.x=p.xray;
+  const opt=(arr,sel)=>`<option value="">待補</option>`+arr.map(x=>`<option ${x===sel?'selected':''}>${h(x)}</option>`).join('');
+  const v=k=>h(p?p[k]||'':'');
+  return `${p?`<div class="row"><button class="btn sm" onclick="tmp.x=undefined;go('patient',{pid:'${p.id}'})">← ${h(p.name)}</button></div>`:''}
+  <h1 ${p?'style="margin-top:12px"':''}>${p?'編輯病人資料':'新增病人'}</h1>
   <div class="card">
-   <label class="f" for="np-name">姓名</label><input class="i" id="np-name" placeholder="請用假名測試">
-   <label class="f" for="np-chart">病歷號（民國生日＋流水號）</label><input class="i" id="np-chart" placeholder="例如 0550707-1" inputmode="numeric">
-   <div class="row"><div class="grow"><label class="f" for="np-job">職業</label><input class="i" id="np-job" placeholder="例如 上班族"></div>
-   <div class="grow"><label class="f" for="np-area">地區</label><input class="i" id="np-area" placeholder="例如 臺北市"></div></div>
-   <label class="f" for="np-doc">主治醫師</label><select class="i" id="np-doc">${opt(DOCTORS,'林涵威')}</select>
-   <div class="row"><div class="grow"><label class="f" for="np-con">諮詢師</label><select class="i" id="np-con">${opt(CONSULT,'苡薇')}</select></div>
-   <div class="grow"><label class="f" for="np-mgr">個案管理師</label><select class="i" id="np-mgr">${opt(CONSULT,'苡薇')}</select></div></div>
-   <label class="f" for="np-src">患者來源</label><select class="i" id="np-src">${opt(['原患者','FB','IG','Google','官網','同業介紹','親友介紹','患者介紹','其他'],'FB')}</select>
+   <p class="muted" style="margin:0">只有姓名必填，其他欄位可以之後再補。</p>
+   <label class="f" for="np-name">姓名</label><input class="i" id="np-name" placeholder="請用假名測試" value="${v('name')}">
+   <label class="f" for="np-chart">病歷號</label><input class="i" id="np-chart" placeholder="例如 0850806 或 0850806-1" value="${v('chart')}" autocomplete="off" autocapitalize="off">
+   <div class="row"><div class="grow"><label class="f" for="np-job">職業</label><input class="i" id="np-job" placeholder="例如 上班族" value="${v('job')}"></div>
+   <div class="grow"><label class="f" for="np-area">地區</label><input class="i" id="np-area" placeholder="例如 臺北市" value="${v('area')}"></div></div>
+   <label class="f" for="np-doc">主治醫師</label><select class="i" id="np-doc">${opt(DOCTORS,p?p.doctor:'')}</select>
+   <div class="row"><div class="grow"><label class="f" for="np-con">諮詢師</label><select class="i" id="np-con">${opt(CONSULT,p?p.consult:'')}</select></div>
+   <div class="grow"><label class="f" for="np-mgr">個案管理師</label><select class="i" id="np-mgr">${opt(CONSULT,p?p.mgr:'')}</select></div></div>
+   <label class="f" for="np-src">患者來源</label><select class="i" id="np-src">${opt(['原患者','FB','IG','Google','官網','同業介紹','親友介紹','患者介紹','其他'],p?p.src:'')}</select>
    <label class="f">全景 X 光</label>
    <div class="row"><label class="btn" for="np-x">上傳照片</label><input id="np-x" type="file" accept="image/*" hidden onchange="act.pickX(this)"><button class="btn" onclick="act.sampleX()">使用範例 X 光</button></div>
    <div id="np-prev" style="margin-top:10px">${tmp.x?`<img src="${tmp.x}" style="width:100%;border-radius:8px">`:''}</div>
-   <button class="btn pri block" style="margin-top:16px" onclick="act.savePatient()">建立病人，開始標牙位</button>
+   <button class="btn pri block" style="margin-top:16px" onclick="${p?'act.updatePatient()':'act.savePatient()'}">${p?'儲存資料':'建立病人，開始標牙位'}</button>
   </div>`;
 }
 function viewPatient(){
   const p=P(V.pid);if(!p)return '<p>找不到病人</p>';
   const age=ageOf(p.chart);
-  const cm=p.consult===p.mgr?`諮詢師／個管師：${h(p.consult)}`:`諮詢師：${h(p.consult)}・個管師：${h(p.mgr)}`;
-  return `<div class="row"><button class="btn sm" onclick="go('patients')">← 患者</button></div>
+  const d=s=>h(s||'待補');
+  const cm=p.consult&&p.consult===p.mgr?`諮詢師／個管師：${d(p.consult)}`:`諮詢師：${d(p.consult)}・個管師：${d(p.mgr)}`;
+  return `<div class="row"><button class="btn sm" onclick="go('patients')">← 患者</button><span class="grow"></span><button class="btn sm" onclick="tmp.x=undefined;go('editp',{pid:'${p.id}'})">編輯資料</button></div>
   <h1 style="margin-top:12px">${h(p.name)}</h1>
-  <div class="card"><div class="muted">${h(p.chart)}・${age!=null?age+' 歲'+(age<=12?'（兒童）':''):''}・${h(p.job||'')}・${h(p.area||'')}</div>
-  <div style="margin-top:4px">主治醫師：${h(p.doctor)}・${cm}・來源：${h(p.src)}</div></div>
+  <div class="card"><div class="muted">病歷號 ${d(p.chart)}${age!=null?'・'+age+' 歲'+(age<=12?'（兒童）':''):''}・職業 ${d(p.job)}・地區 ${d(p.area)}</div>
+  <div style="margin-top:4px">主治醫師：${d(p.doctor)}・${cm}・來源：${d(p.src)}</div></div>
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">牙位</h2><span class="pill ${p.teethDone?'g':'y'}">${p.teethDone?'已確認':'未完成'}</span><button class="btn sm" onclick="go('mark',{pid:'${p.id}'})">${p.teethDone?'修改牙位':'開始標牙位'}</button></div></div>
   <div class="card"><div class="row" style="margin-bottom:10px"><h2 class="grow" style="margin:0">報價紀錄</h2><button class="btn pri sm" onclick="act.newQuote('${p.id}')">＋貼醫囑出報價</button></div>
    ${p.quotes.length?`<div class="vers">${p.quotes.slice().reverse().map(q=>`<button class="ver" onclick="go('plan',{pid:'${p.id}',v:${q.v}})"><b>第 ${q.v} 版</b><span class="muted">${h(q.date)}</span><div style="font-weight:700;color:var(--deep)">NT$ ${money(calc(p,q).total)}</div><span class="pill ${q.signed?'g':''}">${q.signed?'已簽名':'草稿'}</span></button>`).join('')}</div>`:'<p class="muted">還沒有報價。</p>'}
@@ -525,8 +531,8 @@ function viewPlan(){
 }
 function planHTML(p,q){
   const c=calc(p,q);
-  const cm=p.consult===p.mgr?[['諮詢師／個案管理師',p.consult]]:[['諮詢師',p.consult],['個案管理師',p.mgr]];
-  const info=[['病人姓名',p.name],['病歷號',p.chart],['諮詢日期',q.date],['主治醫師',p.doctor+' 醫師'],...cm];
+  const cm=p.consult&&p.consult===p.mgr?[['諮詢師／個案管理師',p.consult]]:[['諮詢師',p.consult||'—'],['個案管理師',p.mgr||'—']];
+  const info=[['病人姓名',p.name],['病歷號',p.chart||'—'],['諮詢日期',q.date],['主治醫師',p.doctor?p.doctor+' 醫師':'—'],...cm];
   const groups={};for(const i of q.items){const g=i.cat||'其他';(groups[g]=groups[g]||[]).push(i)}
   const recs=q.items.filter(i=>!i.gift);
   const pays=[...new Set(q.items.map(i=>priceOf(i.pid)).filter(r=>r&&r.pay).map(r=>`<li><b>${h(r.name)}</b>：${h(r.pay)}</li>`))];
@@ -620,11 +626,18 @@ const act={
     const g=id=>document.getElementById(id).value.trim();
     const name=g('np-name'),chart=g('np-chart');
     if(!name)return toast('請填姓名');
-    if(!/^\d{7}-\d+$/.test(chart))return toast('病歷號格式為 7 碼民國生日加流水號，例如 0550707-1');
-    const ex=S.patients.find(p=>p.chart===chart);
-    if(ex){toast('已有這位病人，直接打開資料夾');tmp={};return go('patient',{pid:ex.id})}
+    if(chart){const ex=S.patients.find(p=>p.chart===chart);
+      if(ex){toast('已有這位病人，直接打開資料夾');tmp={};return go('patient',{pid:ex.id})}}
     const p={id:'p'+(S.seq++),name,chart,job:g('np-job'),area:g('np-area'),doctor:g('np-doc'),consult:g('np-con'),mgr:g('np-mgr'),src:g('np-src'),xray:tmp.x||null,teeth:{},stack:[],teethDone:false,quotes:[],created:today()};
     S.patients.unshift(p);tmp={};save();go('mark',{pid:p.id});
+  },
+  updatePatient(){
+    const p=P(V.pid);const g=id=>document.getElementById(id).value.trim();
+    const name=g('np-name'),chart=g('np-chart');
+    if(!name)return toast('請填姓名');
+    if(chart&&S.patients.some(x=>x!==p&&x.chart===chart))return toast('這個病歷號已經有其他病人使用');
+    Object.assign(p,{name,chart,job:g('np-job'),area:g('np-area'),doctor:g('np-doc'),consult:g('np-con'),mgr:g('np-mgr'),src:g('np-src'),xray:tmp.x||null});
+    tmp={};save();toast('資料已儲存');go('patient',{pid:p.id});
   },
   place(x,y){
     const p=P(V.pid);const t=tmp.relocate||nextTooth(p);if(!t)return toast('32 顆都標完了，可以按完成');
