@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --orange:#FF8401; --deep:#FD4F00; --yellow:#F7DF62; --skin:#F2C49E; --cream:#F9EBDB; --white:#fff;
@@ -26,10 +27,30 @@ button{cursor:pointer}
 .top .who{margin-left:auto;font-size:13px;color:var(--muted);text-align:right;line-height:1.3}
 .top .who strong{color:var(--ink);display:block}
 .demo{background:var(--yellow);color:var(--ink);font-size:12px;text-align:center;padding:4px 12px}
-main{max-width:860px;margin:0 auto;padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 96px)}
-.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--white);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px)}
-.nav button{flex:1;border:0;background:none;padding:10px 0;font-size:13px;color:var(--muted)}
-.nav button.on{color:var(--deep);font-weight:700}
+main{max-width:860px;margin:0 auto;padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 40px)}
+.side{position:fixed;top:0;bottom:0;left:0;width:236px;background:var(--white);border-right:1px solid var(--line);z-index:40;transform:translateX(-102%);transition:transform .2s;padding:calc(env(safe-area-inset-top,0px) + 14px) 12px 20px;overflow:auto}
+body.menu .side{transform:none}
+.scrim{display:none;position:fixed;inset:0;background:rgba(40,25,15,.35);z-index:35}
+body.menu .scrim{display:block}
+.side .brand{display:flex;gap:10px;align-items:center;padding:4px 10px 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.side .brand .mark{width:30px;height:30px;border-radius:50%;background:var(--orange);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:700}
+.side .brand b{font-family:var(--display);letter-spacing:.06em}
+.side button{display:flex;justify-content:space-between;width:100%;text-align:left;border:0;background:none;padding:11px 12px;border-radius:8px;font-size:15px}
+.side button.on{background:var(--cream);color:var(--deep);font-weight:700}
+.side button .tag{font-size:11px;color:var(--muted);font-weight:400}
+.side .sec{font-size:11px;color:var(--muted);padding:14px 12px 4px;letter-spacing:.12em}
+.hamb{border:1px solid var(--line);background:#fff;border-radius:8px;width:38px;height:38px;font-size:18px;line-height:1;flex:0 0 auto}
+@media (min-width:1000px){.side{transform:none}.scrim{display:none!important}.hamb{display:none}body.authed .top,body.authed main,body.authed .demo{margin-left:236px}}
+.duty-shifts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.duty-shifts>div{background:var(--cream);border-radius:8px;padding:8px 10px;font-size:13px;min-width:0}
+.duty-shifts b{display:block;font-family:var(--display);margin-bottom:2px}
+@media (max-width:520px){.duty-shifts{grid-template-columns:1fr}}
+.equip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.equip figure{margin:0;background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.equip figure.wide{grid-column:1/-1}
+.equip img{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff}
+.equip figure.wide img{aspect-ratio:auto}
+.equip figcaption{font-size:12px;padding:6px 10px;background:var(--cream)}
 h1{font-family:var(--display);font-size:22px;margin:4px 0 12px;letter-spacing:.06em}
 h2{font-family:var(--display);font-size:17px;margin:0 0 10px;letter-spacing:.06em}
 .card{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
@@ -66,7 +87,12 @@ textarea.i{min-height:150px}
 .status-bar button.on{border-color:var(--deep);background:var(--deep);color:#fff}
 .xwrap{position:relative;border-radius:8px;overflow:hidden;background:#111;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .xwrap img{display:block;width:100%;pointer-events:none}
-.mk{position:absolute;transform:translate(-50%,-50%);font-size:11px;font-weight:700;border-radius:6px;padding:1px 4px;border:1.5px solid #fff;pointer-events:none;line-height:1.3;color:#fff}
+.mk{position:absolute;transform:translate(-50%,-50%);width:9px;height:9px;border-radius:50%;border:1.5px solid #fff;pointer-events:none;box-shadow:0 0 2px #000}
+.mk i{position:absolute;left:50%;transform:translateX(-50%);font-style:normal;font-size:9px;font-weight:700;color:#fff;text-shadow:0 0 3px #000,0 0 2px #000;white-space:nowrap;line-height:1}
+.mk.up i{bottom:9px}.mk.dn i{top:9px}
+.xscroll{overflow-x:auto;border-radius:8px;-webkit-overflow-scrolling:touch}
+.xscroll.zoom .xwrap{width:230%}
+.xscroll.zoom .mk{width:11px;height:11px}.xscroll.zoom .mk i{font-size:11px}
 .next{font-weight:700;color:var(--deep)}
 .tgrid{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:2px;margin:10px 0}
 .tgrid button{border:1.2px solid #C9B09A;border-radius:5px;background:#fff;font-size:10px;padding:5px 0;line-height:1.1}
@@ -134,7 +160,8 @@ textarea.i{min-height:150px}
 @media (max-width:600px){.sign-row{grid-template-columns:1fr}}
 .s-foot{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;flex-wrap:wrap;gap:6px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-body.present .top,body.present .nav,body.present .demo,body.present .toolbar,body.present .internal{display:none}
+body.present .top,body.present .side,body.present .scrim,body.present .demo,body.present .toolbar,body.present .internal{display:none}
+body.present.authed .top,body.present.authed main{margin-left:0}
 body.present main{max-width:none;padding:0}
 body.present .exitp{display:block}
 .exitp{display:none;position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:30}
@@ -146,6 +173,7 @@ body.present .exitp{display:block}
 .ann .a-ic{position:absolute;transform:translate(-50%,-50%);display:block}
 .ann .a-xx{position:absolute;transform:translate(-50%,-50%);font-size:3.4cqw;color:#d8cfc8;letter-spacing:-.4cqw;text-shadow:0 0 3px #000}
 .ann .a-xx.red{color:#ff5a3c}
+.ann .a-x{position:absolute;transform:translate(-50%,-50%);font-size:4.6cqw;font-weight:700;color:#FD4F00;text-shadow:0 0 3px #000;line-height:1}
 .ann .a-rect{position:absolute;transform:translate(-50%,-50%);width:3.2%;height:9%;border:2px solid #fff;border-radius:2px;box-shadow:0 0 3px #000}
 .ann .a-dot{position:absolute;transform:translate(-50%,-50%);width:1.6%;aspect-ratio:1;border-radius:50%;background:#ff7a59}
 .ann .a-graft{position:absolute;transform:translate(-50%,-50%);width:4.6%;aspect-ratio:1;border:2px dashed #F2C49E;border-radius:50%}
@@ -162,7 +190,8 @@ canvas.pad{width:100%;height:200px;border:1px dashed var(--muted);border-radius:
 @media print{
   @page{size:A4;margin:10mm}
   body{background:#fff}
-  .top,.nav,.demo,.toolbar,.internal,.toast,.exitp{display:none!important}
+  .top,.side,.scrim,.demo,.toolbar,.internal,.toast,.exitp{display:none!important}
+  body.authed main{margin-left:0!important}
   main{padding:0;max-width:none}
   .sheet{box-shadow:none;padding:0;page-break-after:always;max-width:none}
   .scr{display:none!important}.exp{display:inline!important}
@@ -190,30 +219,38 @@ const ST={
   root:{label:'殘根',key:'5',bg:'#a8452a',fg:'#fff',stroke:'#a8452a'},
   none:{label:'跳過',key:' ',bg:'#e9e2db',fg:'#8A7362',stroke:'#cfc3b8',dash:true}
 };
-const CATS=['牙周','植牙','全口重建','成人矯正','兒童矯正','TMJ','贗復','口外'];
+const CATS=['牙周','植牙','全口重建','成人矯正','兒童矯正','TMJ','贗復','口外','兒童牙科','健保'];
 const DEFAULT_PRICES=[
  {id:'imp',name:'植牙',cat:'植牙',unit:'顆',price:110000,front:120000,min:110000,max:120000,alias:['植牙','植體','implant','imp'],dep:10000,pay:'資料收集 $10,000／顆 → 手術日 $50,000／顆 → 植牙印模尾款繳清'},
- {id:'ext',name:'拔牙（健保）',cat:'口外',unit:'顆',price:0,min:0,max:0,alias:['拔牙','拔除','拔'],pay:''},
+ {id:'ext',name:'拔牙（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['拔牙','拔除','拔','ext'],pay:''},
+ {id:'sc',name:'洗牙（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['洗牙','sc','scaling'],pay:''},
+ {id:'od',name:'補牙（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['補牙','od','充填','rest'],pay:''},
+ {id:'perio',name:'牙周統合治療（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['牙統','牙周統合','charting','perio'],pay:''},
+ {id:'endo',name:'根管治療（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['根管','根管治療','endo','rct'],pay:''},
+ {id:'pp',name:'乳牙活髓／根管（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['pp','ppt','活髓'],pay:''},
+ {id:'seal',name:'窩溝封填（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['seal','窩溝封填'],pay:''},
+ {id:'srp',name:'牙根整平（健保）',cat:'健保',nhi:true,unit:'區',price:0,min:0,max:0,alias:['srp','牙根整平'],pay:''},
+ {id:'ssc',name:'兒童不鏽鋼牙冠 SSC',cat:'兒童牙科',unit:'顆',price:5000,min:5000,max:5000,alias:['ssc','不鏽鋼牙冠'],pay:''},
  {id:'col',name:'拔牙加放膠原蛋白',cat:'口外',unit:'顆',price:5000,min:5000,max:5000,alias:['膠原蛋白','膠原','膠球'],pay:''},
  {id:'auto',name:'自體骨移植',cat:'植牙',unit:'區',price:50000,min:50000,max:50000,alias:['自體骨','自體補骨'],dep:5000,pay:'資料收集 $5,000／顆 → 手術日尾款繳清'},
  {id:'bba',name:'BBA 骨塊移植',cat:'植牙',unit:'區',price:null,min:null,max:null,alias:['bba'],dep:5000,pay:'資料收集 $5,000 → 手術日尾款繳清'},
  {id:'graft',name:'人工補骨手術',cat:'植牙',unit:'區',price:20000,min:20000,max:90000,alias:['補骨','gbr','骨粉','人工骨'],dep:5000,pay:'資料收集 $5,000／顆 → 手術日尾款繳清'},
- {id:'sinus',name:'鼻竇增高手術',cat:'植牙',unit:'區',price:20000,min:null,max:null,alias:['鼻竇','sinus','上顎竇'],dep:0,pay:''},
+ {id:'sinus',name:'鼻竇增高手術',cat:'植牙',unit:'區',price:20000,min:null,max:null,alias:['鼻竇','sinus','上顎竇','sl','sinus lift'],dep:0,pay:''},
  {id:'ctg',name:'結締組織移植',cat:'牙周',unit:'區',price:20000,min:null,max:null,alias:['ctg','結締組織','軟組織'],pay:'與植牙手術同時進行'},
  {id:'fgg',name:'FGG 游離牙齦移植',cat:'牙周',unit:'區',price:null,min:null,max:null,alias:['fgg','游齦','游離牙齦'],dep:5000,pay:'資料收集 $5,000／區 → 手術日尾款繳清'},
- {id:'bridge',name:'植牙牙橋假牙',cat:'植牙',unit:'顆',price:28000,min:null,max:null,alias:['牙橋'],pay:''},
- {id:'crown',name:'假牙（牙冠）',cat:'贗復',unit:'顆',price:22000,front:28000,min:22000,max:28000,alias:['假牙','牙冠','crown','全瓷冠'],pay:'臨時假牙 $5,000／顆 → 正式印模 後牙 $17,000／前牙 $23,000'},
- {id:'veneer',name:'陶瓷貼片',cat:'贗復',unit:'顆',price:25000,min:25000,max:28000,alias:['貼片','veneer'],pay:'臨時假牙 $5,000／顆 → 正式印模 $20,000 或 $23,000／顆'},
- {id:'onlay',name:'3D 齒雕',cat:'贗復',unit:'顆',price:22000,min:22000,max:30000,alias:['齒雕','嵌體','onlay'],pay:'正式印模 $15,000／顆 → 裝戴尾款繳清'},
+ {id:'bridge',name:'植牙牙橋假牙',cat:'植牙',unit:'顆',price:28000,min:null,max:null,alias:['牙橋','br','fpd'],pay:''},
+ {id:'crown',name:'假牙（牙冠）',cat:'贗復',unit:'顆',price:22000,front:28000,min:22000,max:28000,alias:['假牙','牙冠','crown','全瓷冠','cr','pfm','zr'],pay:'臨時假牙 $5,000／顆 → 正式印模 後牙 $17,000／前牙 $23,000'},
+ {id:'veneer',name:'陶瓷貼片',cat:'贗復',unit:'顆',price:25000,min:25000,max:28000,alias:['貼片','veneer','lv'],pay:'臨時假牙 $5,000／顆 → 正式印模 $20,000 或 $23,000／顆'},
+ {id:'onlay',name:'3D 齒雕',cat:'贗復',unit:'顆',price:22000,min:22000,max:30000,alias:['齒雕','嵌體','onlay','inlay'],pay:'正式印模 $15,000／顆 → 裝戴尾款繳清'},
  {id:'rpd',name:'活動假牙',cat:'贗復',unit:'顎',price:60000,min:60000,max:60000,alias:['活動假牙','rpd','cd'],pay:'取初模 $5,000 → 定高度試排牙 $30,000 → 正式印模 $25,000'},
  {id:'ao4',name:'ALL-ON-4',cat:'全口重建',unit:'顎',price:700000,min:700000,max:900000,alias:['ao4','all-on-4','all on 4','allon4'],dep:50000,pay:'資料收集 $50,000／顎 → 術前兩週 $400,000／顎 → 正式模型尾款繳清'},
  {id:'laser',name:'全口水雷射牙周治療',cat:'牙周',unit:'次',price:40000,min:40000,max:60000,alias:['水雷射','waterlase'],dep:5000,pay:'資料收集 $5,000 → 水雷射治療尾款結清'},
  {id:'gtr',name:'牙周再生手術',cat:'牙周',unit:'區',price:30000,min:30000,max:60000,alias:['gtr','再生'],dep:5000,pay:'資料收集 $5,000 → 手術當天尾款結清'},
  {id:'cl',name:'牙冠增長術',cat:'牙周',unit:'顆',price:8000,min:8000,max:20000,alias:['牙冠增長','clp'],dep:5000,pay:'資料收集 $5,000／顆 → 手術日尾款繳清'},
- {id:'micro',name:'顯微根管',cat:'贗復',unit:'顆',price:12000,min:12000,max:40000,alias:['根管','micro','顯微'],dep:5000,pay:'資料收集 $5,000 → 第一次顯微根管治療尾款結清'},
+ {id:'micro',name:'顯微根管',cat:'贗復',unit:'顆',price:12000,min:12000,max:40000,alias:['顯微根管','micro','顯微'],dep:5000,pay:'資料收集 $5,000 → 第一次顯微根管治療尾款結清'},
  {id:'ems',name:'全口 EMS 清潔',cat:'牙周',unit:'次',price:null,min:null,max:null,alias:['ems','噴砂'],pay:''},
  {id:'ortho',name:'成人矯正',cat:'成人矯正',unit:'次',price:120000,min:120000,max:270000,alias:['矯正','inv','隱適美','戴蒙'],dep:3000,pay:'資料收集 $3,000（可抵矯正費）'},
- {id:'tmj',name:'顳顎關節治療',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['tmj','顳顎','咬合板'],pay:''}
+ {id:'tmj',name:'顳顎關節治療',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['tmj','顳顎','咬合板','splint'],pay:''}
 ];
 const GIFTS=['每次定檢塗氟','維持器乙副','美白噴砂','居家美白','冷光美白','EMS 清潔乙次'];
 const SED={
@@ -228,6 +265,10 @@ const MKT={none:{label:'無',off:0},teach:{label:'AO4 教學專案',off:50000},m
 
 /* ========= 狀態 ========= */
 let S=load();
+(function migrate(){const ids=new Set();for(const d of DEFAULT_PRICES){ids.add(d.id);const e=S.prices.find(x=>x.id===d.id);
+  if(!e){S.prices.push(JSON.parse(JSON.stringify(d)));continue}
+  e.alias=[...new Set(d.alias.concat((e.alias||[]).filter(a=>!(d.id==='micro'&&a==='根管'))))];if(d.nhi){e.nhi=true;e.cat=d.cat;e.name=d.name}}
+  S.itemImgs=S.itemImgs||{};})();
 let V={name:'login'};
 let tmp={};
 function blank(){return {users:[],me:null,patients:[],prices:JSON.parse(JSON.stringify(DEFAULT_PRICES)),seq:1}}
@@ -250,31 +291,25 @@ const priceOf=id=>S.prices.find(x=>x.id===id);
 function go(name,o={}){V=Object.assign({name},o);render();window.scrollTo(0,0)}
 function render(){
   const app=document.getElementById('app');
-  if(!S.me||!me()){app.innerHTML=viewLogin();return}
+  if(!S.me||!me()){document.body.classList.remove('authed');app.innerHTML=viewLogin();return}
+  document.body.classList.add('authed');document.body.classList.remove('menu');
   const u=me();
-  let body='';
-  if(V.name==='home')body=viewHome();
-  else if(V.name==='patients')body=viewPatients();
-  else if(V.name==='newp'||V.name==='editp')body=viewNewPatient();
-  else if(V.name==='patient')body=viewPatient();
-  else if(V.name==='mark')body=viewMark();
-  else if(V.name==='orders')body=viewOrders();
-  else if(V.name==='plan')body=viewPlan();
-  else if(V.name==='settings')body=viewSettings();
-  else body=viewHome();
-  const tab=['home','patients','settings'];
-  const cur=V.name==='settings'?'settings':(V.name==='home'?'home':'patients');
+  const views={home:viewHome,patients:viewPatients,newp:viewNewPatient,editp:viewNewPatient,patient:viewPatient,mark:viewMark,orders:viewOrders,plan:viewPlan,settings:viewSettings,mgrs:()=>viewPeople('mgr'),cons:()=>viewPeople('consult'),handoff:viewHandoff,reports:viewReports,roster:viewRoster};
+  const body=(views[V.name]||viewHome)();
+  const sec={patient:'patients',newp:'patients',editp:'patients',mark:'patients',orders:'patients',plan:'patients'};
+  const cur=sec[V.name]||V.name;
+  const boss=['管理員','個管主管'].includes(u.role);
+  const item=(k,label,tag)=>`<button class="${cur===k?'on':''}" onclick="go('${k}')">${label}${tag?`<span class="tag">${tag}</span>`:''}</button>`;
   app.innerHTML=`
+  <aside class="side"><div class="brand"><div class="mark">立</div><b>立威個案管理</b></div>
+   ${item('home','今日待辦')}${item('patients','患者查詢')}${item('mgrs','個案管理')}${item('cons','諮詢師')}${item('handoff','待交接','第二階段')}${boss?item('reports','報表','第二階段'):''}
+   <div class="sec">設定</div>${item('roster','上傳班表')}${item('settings','設定')}</aside>
+  <div class="scrim" onclick="document.body.classList.remove('menu')"></div>
   <div class="demo">試用版・資料只存在這支手機的瀏覽器・請勿輸入真實病人資料</div>
-  <header class="top"><div class="mark">立</div><b>立威個案管理</b>
+  <header class="top"><button class="hamb" aria-label="選單" onclick="document.body.classList.add('menu')">☰</button><b>立威個案管理</b>
     <div class="who"><strong>${h(u.name)}</strong>${h(u.role)}・<a href="#" onclick="act.logout();return false" style="color:inherit">登出</a></div></header>
   <main>${body}</main>
-  <button class="btn sm exitp" onclick="document.body.classList.remove('present')">結束展示</button>
-  <nav class="nav">
-    <button class="${cur==='home'?'on':''}" onclick="go('home')">今日待辦</button>
-    <button class="${cur==='patients'?'on':''}" onclick="go('patients')">患者查詢</button>
-    <button class="${cur==='settings'?'on':''}" onclick="go('settings')">設定</button>
-  </nav>`;
+  <button class="btn sm exitp" onclick="document.body.classList.remove('present')">結束展示</button>`;
   after();
 }
 function after(){
@@ -314,13 +349,106 @@ function todo(){
   }
   return out;
 }
+const DOCMAP={'威':'林涵威','周':'周厚江','唐':'唐宗凡','簡':'簡志忠','邵':'邵獻慶','婷':'謝欣婷','黃':'黃振邦','蔡':'蔡世軒','勛':'蕭至勛','尹':'尹姵今','星':'陳德星','華':'華芳瑩','宣':'黃宣諭','忠':'林正忠','吳':'吳哲勛','趙':'趙子毅','許':'許彤年'};
+const FRONT_PRI=['儒瑩','苡薇','暐涵'];
+function rosterToday(off=0){
+  const R=S.roster;if(!R)return null;const d=new Date();d.setDate(d.getDate()+off);
+  if(+R.month!==d.getMonth()+1)return null;return R.days[d.getDate()]||null;
+}
+function dutyOf(day){
+  const out={};
+  for(const sh of ['早','午','晚']){
+    const cells=(day.shifts&&day.shifts[sh])||{};const o={sup:[],docs:new Set(),con:[],flow:[],front:[],off:[]};
+    for(const [nm,c] of Object.entries(cells)){
+      const code=c.code||'';const base=code.replace(/[0-9*+＋\s]/g,'');
+      if(c.sup)o.sup.push(nm);
+      if(/特/.test(code))o.off.push(nm);
+      if(/個/.test(code))o.con.push(nm);
+      if(/^F/i.test(base))o.flow.push(nm);
+      if(/^C/i.test(base))o.front.push(nm);
+      for(const ch of base)if(DOCMAP[ch])o.docs.add(DOCMAP[ch]);
+    }
+    if(!o.sup.length){const f=FRONT_PRI.find(n=>o.front.includes(n));if(f)o.sup.push(f+'（依順序）')}
+    out[sh]=o;
+  }
+  return out;
+}
+function dutyCard(){
+  const day=rosterToday();
+  if(!S.roster)return `<div class="card"><h2>今日值班</h2><p class="muted" style="margin:0">還沒有上傳班表。到左側選單「上傳班表」上傳本月助理班表 Excel，就會顯示今天的值班。</p></div>`;
+  if(!day)return `<div class="card"><h2>今日值班</h2><p class="muted" style="margin:0">目前上傳的是 ${h(S.roster.month)} 月班表，沒有今天的資料。請上傳本月班表。</p></div>`;
+  const d=dutyOf(day);const j=a=>a.length?a.map(h).join('、'):'—';
+  const allDocs=new Set();Object.values(d).forEach(o=>o.docs.forEach(x=>allDocs.add(x)));
+  const ao4=/AO4/i.test(day.note||'');
+  const nurse=ao4?['早','午','晚'].filter(sh=>day.shifts[sh]&&day.shifts[sh]['陳芸']&&day.shifts[sh]['陳芸'].code&&!/特/.test(day.shifts[sh]['陳芸'].code)):[];
+  return `<div class="card"><h2>今日值班 <span class="pill">${new Date().getMonth()+1}/${new Date().getDate()}</span></h2>
+   ${day.note?`<p style="margin:0 0 8px"><span class="pill y">${h(day.note)}</span></p>`:''}
+   ${ao4?`<p style="margin:0 0 8px"><b>AO4 日・護理師陳芸</b>：${nurse.length?'值班時段 '+nurse.join('、'):'班表上沒有排班，請確認'}</p>`:''}
+   <p style="margin:0 0 8px"><span class="muted">今日醫師</span><br>${allDocs.size?[...allDocs].map(h).join('、'):'—'}</p>
+   <div class="duty-shifts">${['早','午','晚'].map(sh=>`<div><b>${sh}診</b>主管：${j(d[sh].sup)}<br>諮詢師：${j(d[sh].con)}<br>流動：${j(d[sh].flow)}<br>櫃檯：${j(d[sh].front)}${d[sh].off.length?`<br><span class="muted">特休：${j(d[sh].off)}</span>`:''}</div>`).join('')}</div></div>`;
+}
+function rosterTodos(){
+  const out=[];const u=me();
+  const tm=rosterToday(1);
+  if(tm&&/會|訓練/.test(tm.note||'')&&['管理員','個管主管'].includes(u.role))out.push({t:`明天「${tm.note}」，請準備報表`,c:'y'});
+  const d=new Date(),last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  if(d.getDate()===last)out.push({t:'今天是月底，請上傳下個月班表',c:'y',to:()=>go('roster')});
+  return out;
+}
 function viewHome(){
-  const td=todo();tmp.todo=td;
+  const td=todo();tmp.todo=td;const rt=rosterTodos();tmp.rt=rt;
   return `<h1>今日待辦</h1>
-  <div class="card"><h2>今日值班 <span class="pill">範例班表</span></h2>
-   <dl class="duty"><dt>醫師</dt><dd>林涵威、周厚江、蔡世軒、尹姵今</dd><dt>櫃檯主管</dt><dd>早：儒瑩／午：苡薇／晚：暐涵</dd><dt>諮詢師</dt><dd>苡薇</dd><dt>流動</dt><dd>雅筑</dd><dt>會議</dt><dd>今日無（明天：諮詢會，請苡薇準備報表）</dd></dl></div>
+  ${dutyCard()}
+  ${rt.length?`<div class="card list">${rt.map((x,i)=>`<div class="it" ${x.to?`onclick="tmp.rt[${i}].to()"`:''}><div class="grow"><b>${h(x.t)}</b></div><span class="pill ${x.c}">提醒</span></div>`).join('')}</div>`:''}
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">待處理個案</h2><button class="btn pri sm" onclick="go('newp')">＋新增病人</button></div>
    <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${h(x.p.name)}</b><span class="muted">${h(x.p.chart||'病歷號待補')}・${x.p.doctor?h(x.p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${x.c}">${h(x.t)}</span></div>`).join(''):'<p class="muted">目前沒有待辦。按「＋新增病人」開始試用。</p>'}</div></div>`;
+}
+function viewPeople(key){
+  const title=key==='mgr'?'個案管理':'諮詢師';const who=V.who;
+  if(!who){
+    return `<h1>${title}</h1><div class="card list">${CONSULT.map(n=>{const c=S.patients.filter(p=>p[key]===n).length;return `<div class="it" onclick="go('${key==='mgr'?'mgrs':'cons'}',{who:'${n}'})"><div class="grow"><b>${h(n)}</b><span class="muted">${key==='mgr'?'負責':'經手'} ${c} 位病人</span></div><span class="pill">${c}</span></div>`}).join('')}
+     ${(()=>{const c=S.patients.filter(p=>!p[key]).length;return c?`<div class="it" onclick="go('${key==='mgr'?'mgrs':'cons'}',{who:'__none'})"><div class="grow"><b>尚未指定</b><span class="muted">${c} 位病人</span></div><span class="pill y">${c}</span></div>`:''})()}</div>`;
+  }
+  const list=S.patients.filter(p=>who==='__none'?!p[key]:p[key]===who);
+  return `<div class="row"><button class="btn sm" onclick="go('${key==='mgr'?'mgrs':'cons'}')">← ${title}</button></div>
+   <h1 style="margin-top:12px">${who==='__none'?'尚未指定':h(who)}</h1>
+   <div class="card list">${list.length?list.map(p=>{const s2=stageOf(p);return `<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.name)}</b><span class="muted">${h(p.chart||'病歷號待補')}・${p.doctor?h(p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${s2[1]}">${h(s2[0])}</span></div>`}).join(''):'<p class="muted">目前沒有個案。</p>'}</div>`;
+}
+function viewHandoff(){return `<h1>待交接</h1><div class="card"><p style="margin:0">第二階段功能：成交後的交接表會在這裡，可以分次填寫、隨時存檔，並顯示填寫進度。</p><p class="muted">追蹤紀錄、成交／未成交結案、交接表會在下一版加入。</p></div>`}
+function viewReports(){
+  const n=S.patients.length,q=S.patients.filter(p=>p.quotes.length).length,sg=S.patients.filter(p=>p.quotes.some(x=>x.signed)).length;
+  return `<h1>報表</h1><div class="card"><h2>目前試用資料</h2><dl class="duty"><dt>病人數</dt><dd>${n}</dd><dt>已出報價</dt><dd>${q}</dd><dt>已簽名</dt><dd>${sg}</dd></dl></div>
+  <div class="card"><p style="margin:0">第二階段功能：諮詢會、行銷會、主管會、院會的報表（成交率、未成交原因、患者來源、NP 數等）會在這裡自動產生。</p></div>`;
+}
+function viewRoster(){
+  const m=new Date().getMonth()+1;const R=S.roster;
+  return `<h1>上傳班表</h1>
+  <div class="card"><h2>助理班表</h2>
+   <p class="muted" style="margin-top:0">上傳整份助理班表 Excel（.xlsx），系統會讀取選擇月份的工作表，例如「${m}月助理」。</p>
+   <label class="f" for="r-month">月份</label><select class="i" id="r-month">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===m?'selected':''}>${i+1} 月</option>`).join('')}</select>
+   <label class="btn pri block" style="margin-top:12px;text-align:center" for="r-file">選擇 Excel 檔並上傳</label><input id="r-file" type="file" accept=".xlsx,.xls" hidden onchange="act.roster(this)">
+   ${R?`<p class="muted" style="margin:12px 0 0">目前班表：${h(R.month)} 月（${h(R.sheet)}），${h(R.uploaded)} 由 ${h(R.by)} 上傳，共 ${Object.keys(R.days).length} 天、${R.names.length} 位人員。</p>`:''}</div>
+  <div class="card"><h2>小編班表</h2><p class="muted" style="margin:0">即將加入：讀取拍攝行程，在首頁顯示「今日有拍攝行程 🎬」。</p></div>`;
+}
+function parseRoster(wb,m){
+  const name=wb.SheetNames.find(n=>n.replace(/\s/g,'')===m+'月助理')||wb.SheetNames.find(n=>n.replace(/\s/g,'').startsWith(m+'月助理'));
+  if(!name)return {err:'找不到「'+m+'月助理」工作表'};
+  const ws=wb.Sheets[name];const rg=XLSX.utils.decode_range(ws['!ref']);
+  const cell=(r,c)=>ws[XLSX.utils.encode_cell({r,c})];
+  const names=[];for(let c=3;c<=rg.e.c;c++){const v=cell(0,c);if(!v||v.v==null||String(v.v).trim()==='')break;names.push({c,n:String(v.v).trim()})}
+  const days={};let cur=null;
+  for(let r=1;r<=rg.e.r;r++){
+    const a=cell(r,0),sh=cell(r,2);
+    if(a&&a.v!=null&&/^\d{1,2}(\D|$)/.test(String(a.v).trim())){const t=String(a.v).trim().split(/\r?\n/);cur=+t[0].match(/^\d+/)[0];days[cur]=days[cur]||{note:t.slice(1).join(' ').trim(),shifts:{}}}
+    const shv=sh&&sh.v!=null?String(sh.v).trim():'';
+    if(!cur||!['早','午','晚'].includes(shv))continue;
+    const row={};
+    for(const {c,n} of names){const x=cell(r,c);const code=x&&x.v!=null?String(x.v).trim():'';const f=x&&x.s&&x.s.fgColor;
+      const sup=!!(f&&((f.theme===6&&f.tint>0.3)||String(f.rgb||'').toUpperCase().endsWith('D7E4BD')));
+      if(code||sup)row[n]={code,sup}}
+    days[cur].shifts[shv]=row;
+  }
+  return {sheet:name,names:names.map(x=>x.n),days};
 }
 
 /* ---- 患者 ---- */
@@ -384,8 +512,9 @@ function viewMark(){
   <div class="hint">快捷鍵：1 存在、2 缺牙、3 植體、4 牙冠或假牙、5 殘根；空白鍵跳過；Ctrl+Z 上一步；Enter 完成</div>
   <div class="status-bar">${Object.entries(ST).filter(([k])=>k!=='none').map(([k,s])=>`<button class="${tmp.mode===k?'on':''}" onclick="tmp.mode='${k}';render()">${s.key} ${s.label}</button>`).join('')}</div>
   <div class="row" style="margin-bottom:8px"><div class="grow">${nx?(tmp.relocate?`重新定位 <span class="next">${nx}</span>：點 X 光上的位置`:`下一顆：<span class="next">${nx}</span>（${ST[tmp.mode].label}）`):'<b style="color:var(--good)">32 顆都標完了</b>'}</div>
-   <button class="btn sm" onclick="act.skip()" ${nx&&!tmp.relocate?'':'disabled'}>跳過</button><button class="btn sm" onclick="act.undo()">上一步</button></div>
-  <div class="xwrap" id="xw"><img src="${p.xray||sampleXray()}" alt="全景 X 光">${ORDER.filter(t=>p.teeth[t]&&p.teeth[t].x!=null).map(t=>{const d=p.teeth[t],s=ST[d.s];return `<span class="mk" style="left:${d.x}%;top:${d.y}%;background:${s.bg};color:${s.fg};${d.s==='ok'?'border-color:#C9B09A':''}">${t}</span>`}).join('')}</div>
+   <button class="btn sm" onclick="act.skip()" ${nx&&!tmp.relocate?'':'disabled'}>跳過</button><button class="btn sm" onclick="act.undo()">上一步</button><button class="btn sm" onclick="act.clearAll()">一鍵清除</button></div>
+  <div class="row" style="margin-bottom:6px"><button class="btn sm" onclick="tmp.zoom=!tmp.zoom;tmp.xsl=0;render()">${tmp.zoom?'縮小 X 光':'放大 X 光'}</button><span class="muted">${tmp.zoom?'左右滑動 X 光來點選':''}</span></div>
+  <div class="xscroll ${tmp.zoom?'zoom':''}" id="xs"><div class="xwrap" id="xw"><img src="${p.xray||sampleXray()}" alt="全景 X 光">${ORDER.filter(t=>p.teeth[t]&&p.teeth[t].x!=null).map(t=>{const d=p.teeth[t],s=ST[d.s];return `<span class="mk ${Math.floor(t/10)<=2?'up':'dn'}" style="left:${d.x}%;top:${d.y}%;background:${d.s==='ok'?'#7ed1a0':s.bg}"><i>${t}</i></span>`}).join('')}</div></div>
   <div class="tgrid">${UPPER.map(t=>tbtn(p,t)).join('')}<div class="gap"></div>${LOWER.map(t=>tbtn(p,t)).join('')}</div>
   ${tmp.sel?selPanel(p,tmp.sel):'<p class="muted">點上方牙位圖的牙齒可以改狀態或重新定位。</p>'}
   <button class="btn pri block" style="margin-top:12px" onclick="act.finishMark()">完成，送出確認</button>`;
@@ -396,7 +525,8 @@ function selPanel(p,t){const d=p.teeth[t];return `<div class="card" style="margi
  <button class="btn sm" onclick="tmp.relocate=${t};tmp.sel=null;render()">在 X 光上重新定位</button></div>`}
 function bindMark(){
   const xw=document.getElementById('xw');if(!xw)return;
-  xw.onclick=e=>{const r=xw.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100;act.place(x,y)};
+  const xs=document.getElementById('xs');if(xs&&tmp.xsl)xs.scrollLeft=tmp.xsl;
+  xw.onclick=e=>{const r=xw.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100;if(xs)tmp.xsl=xs.scrollLeft;act.place(x,y)};
 }
 document.addEventListener('keydown',e=>{
   if(V.name!=='mark'||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
@@ -414,7 +544,9 @@ function expandRange(a,b){
 }
 function findItem(seg){
   const low=seg.toLowerCase();let best=null,len=0;
-  for(const it of S.prices)for(const a of it.alias){const al=a.toLowerCase();if(al&&low.includes(al)&&al.length>len){best=it;len=al.length}}
+  for(const it of S.prices)for(const a of it.alias){const al=a.toLowerCase();if(!al||al.length<=len)continue;
+    const hit=/^[a-z0-9 \-]+$/.test(al)?new RegExp('(^|[^a-z])'+al.replace(/[-]/g,'\\-')+'([^a-z]|$)').test(low):low.includes(al);
+    if(hit){best=it;len=al.length}}
   return best;
 }
 function parseOrders(text){
@@ -450,7 +582,7 @@ function mkItem(it,teeth,price,o={}){
   let qty=1;
   if(it&&it.unit==='顆')qty=Math.max(teeth.length,1);
   if(it&&it.unit==='顎')qty=Math.max(o.arches||1,1);
-  return {pid:it?it.id:null,name:it?(it.id==='laser'||o.whole?(it.name.startsWith('全口')?it.name:'全口'+it.name):it.name):o.label,cat:it?it.cat:'',unit:it?it.unit:'次',teeth,qty,price:unitPrice,orig:unitPrice,list:o.gift?0:(listPrice!=null&&unitPrice!=null&&listPrice>unitPrice?listPrice:unitPrice),reason:'',gift:!!o.gift,auto:o.auto||'',fromOrders:price!=null};
+  return {pid:it?it.id:null,name:it?(it.id==='laser'||o.whole?(it.name.startsWith('全口')?it.name:'全口'+it.name):it.name):o.label,cat:it?it.cat:'',unit:it?it.unit:'次',teeth,qty,nhi:!!(it&&it.nhi),price:unitPrice,orig:unitPrice,list:o.gift?0:(listPrice!=null&&unitPrice!=null&&listPrice>unitPrice?listPrice:unitPrice),reason:'',gift:!!o.gift,auto:o.auto||'',fromOrders:price!=null};
 }
 function orderRate(text){const m=String(text||'').match(/(\d{1,2}(?:\.\d)?)\s*折/);if(!m)return null;let n=parseFloat(m[1]);n=n>=10?n/100:n/10;return n>0&&n<1?n:null}
 const RATES={none:1,'95':0.95,'90':0.9};
@@ -530,7 +662,7 @@ function viewOrders(){
   <div class="card"><h2>檢查清單</h2><ul class="chk">${checks(p,q).map(([cc,t])=>`<li><span class="dot ${cc}"></span><span>${h(t)}</span></li>`).join('')}</ul>
    <p class="muted" style="margin:8px 0 0">${checks(p,q).some(x=>x[0]==='r')?'有紅色項目：請病人稍等，先和醫師確認。':'沒有紅色項目，可以直接出計畫書。'}</p></div>
   <div class="card"><h2>治療項目</h2><div class="tablewrap"><table class="items"><thead><tr><th style="min-width:110px">項目</th><th style="min-width:80px">牙位</th><th>數量</th><th style="min-width:90px">單價</th><th></th></tr></thead><tbody>
-   ${q.items.map((i,k)=>`<tr><td><select onchange="act.itemSet(${k},'pid',this.value)"><option value="">請選擇</option>${S.prices.map(x=>`<option value="${x.id}" ${x.id===i.pid?'selected':''}>${h(x.name)}</option>`).join('')}</select>${i.gift?'<span class="pill g">贈送</span>':''}${!i.gift&&i.list!=null&&i.price!=null&&i.list>i.price?`<span class="pill y">醫師折扣 原價 ${money(i.list)}</span>`:''}</td>
+   ${q.items.map((i,k)=>`<tr><td><select onchange="act.itemSet(${k},'pid',this.value)"><option value="">請選擇</option>${S.prices.map(x=>`<option value="${x.id}" ${x.id===i.pid?'selected':''}>${h(x.name)}</option>`).join('')}</select>${i.gift?'<span class="pill g">贈送</span>':''}${i.nhi?'<span class="pill g">健保</span>':''}${!i.gift&&i.list!=null&&i.price!=null&&i.list>i.price?`<span class="pill y">醫師折扣 原價 ${money(i.list)}</span>`:''}</td>
    <td><input value="${h(i.teeth.join('.'))}" onchange="act.itemSet(${k},'teeth',this.value)" placeholder="全口"></td>
    <td><input type="number" min="1" value="${i.qty}" onchange="act.itemSet(${k},'qty',this.value)" style="width:56px"></td>
    <td><input type="number" value="${i.price??''}" placeholder="待補" onchange="act.itemSet(${k},'price',this.value)">${i.orig!==i.price&&i.orig!=null?`<input value="${h(i.reason)}" placeholder="改價原因（必填）" onchange="act.itemSet(${k},'reason',this.value)" style="margin-top:4px;border-color:var(--deep)">`:''}</td>
@@ -587,7 +719,7 @@ function planSets(q){
 }
 function xrayAnn(p,q){
   if(!p.xray)return '<div class="s-xray empty">未上傳 X 光</div>';
-  const st=planSets(q);const pos=t=>p.teeth[t]&&p.teeth[t].x!=null?p.teeth[t]:null;
+  const st=planSets(q);const pos=t=>estPos(p,t);
   let out='';
   const spans=[];
   for(const row of [UPPER,LOWER]){
@@ -598,10 +730,10 @@ function xrayAnn(p,q){
   for(const sp of spans){const pts=sp.map(pos).filter(Boolean);if(!pts.length)continue;
     const x1=Math.min(...pts.map(d=>d.x))-2.6,x2=Math.max(...pts.map(d=>d.x))+2.6,y=pts.reduce((s,d)=>s+d.y,0)/pts.length;
     out+=`<span class="a-bridge" style="left:${x1}%;width:${x2-x1}%;top:${y-7}%;height:14%"></span>`}
-  for(const t of ORDER){const d=pos(t);if(!d)continue;const s=p.teeth[t].s;const up=Math.floor(t/10)<=2;
+  for(const t of ORDER){const d=pos(t);if(!d)continue;const s=(p.teeth[t]||{s:'ok'}).s;const up=Math.floor(t/10)<=2;
     let sym='';
     if(st.imp.has(t))sym=`<span class="a-ic" style="left:${d.x}%;top:${d.y}%;width:2.6%;height:13%">${SCREW('#FD4F00')}</span>`;
-    else if(st.ext.has(t))sym=`<b class="a-xx red" style="left:${d.x}%;top:${d.y}%">××</b>`;
+    else if(st.ext.has(t))sym=`<b class="a-x" style="left:${d.x}%;top:${d.y}%">×</b>`;
     else if(st.veneer.has(t))sym=`<span class="a-rect" style="left:${d.x}%;top:${d.y}%"></span>`;
     else if(st.crown.has(t))sym=`<span class="a-ic" style="left:${d.x}%;top:${d.y+(up?2:-2)}%;width:4%;height:5%;${up?'transform:translate(-50%,-50%) rotate(180deg)':''}">${CAP('#F7DF62')}</span>`;
     else if(s==='miss'||s==='none')sym=`<b class="a-xx" style="left:${d.x}%;top:${d.y}%">××</b>`;
@@ -610,10 +742,59 @@ function xrayAnn(p,q){
     else if(s==='root')sym=`<span class="a-dot" style="left:${d.x}%;top:${d.y}%"></span>`;
     if(st.graft[t])sym+=`<span class="a-graft" style="left:${d.x}%;top:${d.y+(up?-9:9)}%"></span>`;
     const hot=st.imp.has(t)||st.ext.has(t)||st.bridge.has(t)||st.veneer.has(t)||st.crown.has(t)||st.graft[t];
-    out+=sym+`<span class="a-num ${hot?'hot':''}" style="left:${d.x}%;top:${d.y+(up?-15:15)}%">${t}</span>`;
+    out+=sym+`<span class="a-num ${hot?'hot':''}" style="left:${d.x}%;top:${d.y+(up?-15:24)}%">${t}</span>`;
   }
   return `<div class="s-xray ann"><img src="${p.xray}" alt="全景 X 光">${out}</div>
-  <div class="legend"><span><b style="color:#FD4F00">螺絲</b> 植牙</span><span><b style="color:#ff5a3c">××</b> 拔牙</span><span><b style="color:#9b8a7d">××</b> 缺牙</span><span><i style="background:none;border:2px solid #E2C21F"></i>牙橋</span><span><i style="background:none;border:2px solid #fff;outline:1px solid #ccc"></i>貼片</span><span><i style="background:none;border:2px dashed #F2C49E;border-radius:50%"></i>補骨／鼻竇增高</span></div>`;
+  <div class="legend"><span><b style="color:#FD4F00">螺絲</b> 植牙</span><span><b style="color:#FD4F00">×</b> 拔牙</span><span><b style="color:#9b8a7d">××</b> 缺牙</span><span><i style="background:none;border:2px solid #E2C21F"></i>牙橋</span><span><i style="background:none;border:2px solid #fff;outline:1px solid #ccc"></i>貼片</span><span><i style="background:none;border:2px dashed #F2C49E;border-radius:50%"></i>補骨／鼻竇增高</span></div>`;
+}
+function estPos(p,t){
+  const d=p.teeth[t];if(d&&d.x!=null)return d;
+  const row=UPPER.includes(t)?UPPER:LOWER;const i=row.indexOf(t);
+  const known=row.map((tt,k)=>{const e=p.teeth[tt];return e&&e.x!=null?{k,x:e.x,y:e.y}:null}).filter(Boolean);
+  const curve=k=>Math.pow((k-7.5)/7.5,2)*5;
+  if(known.length>=2){
+    let L=null,R=null;for(const e of known){if(e.k<i&&(!L||e.k>L.k))L=e;if(e.k>i&&(!R||e.k<R.k))R=e}
+    if(!L||!R){const side=known.filter(e=>!L?e.k>i:e.k<i).sort((a,b)=>Math.abs(a.k-i)-Math.abs(b.k-i));const a=side[0],b=side[1]||side[0];
+      const dx=a.k===b.k?3.4:(a.x-b.x)/(a.k-b.k),dy=a.k===b.k?0:(a.y-b.y)/(a.k-b.k);return {x:a.x+dx*(i-a.k),y:a.y+dy*(i-a.k),est:true}}
+    const f=(i-L.k)/(R.k-L.k);return {x:L.x+(R.x-L.x)*f,y:L.y+(R.y-L.y)*f,est:true};
+  }
+  if(known.length===1){const a=known[0];return {x:a.x+(i-a.k)*3.4,y:a.y+(row===UPPER?-1:-1)*(curve(i)-curve(a.k)),est:true}}
+  return {x:22+i*(56/15),y:(row===UPPER?45:58)-curve(i),est:true};
+}
+const EQUIP={
+  flow:['flow.jpg','從 3D 影像檢查到安排治療時間的完整流程',true],
+  xguide:['xguide.jpg','美國 X-nav® X-Guide 動態導航系統'],
+  or:['or.jpg','超越醫學中心等級 數位化手術室'],
+  scanB:['scanB.jpg','韓國 RayScan® 低劑量立體全顱影像系統'],
+  scanA:['scanA.jpg','丹麥 3Shape® 口腔掃描影像系統'],
+  scaler:['scaler.jpg','牙周統合治療：深入牙周囊袋清除牙結石'],
+  lasertip:['lasertip.jpg','水雷射：以水與雷射能量清潔牙周囊袋'],
+  biolase:['biolase.jpg','美國 Biolase® 水雷射系統'],
+  ems:['ems.jpg','瑞士 EMS GBT® 微創噴砂系統'],
+  itero:['itero.jpg','隱適美矯正最佳幫手 iTero 口腔掃描系統'],
+  zeiss:['zeiss.jpg','德國 Zeiss® 牙科顯微鏡'],
+  anes:['anes.jpg','全身麻醉 & 鎮靜麻醉 標靶藥物注射系統'],
+  recovery:['recovery.jpg','獨立麻醉恢復室：比照醫院等級，由麻醉專科醫師駐點，全程掌控恢復狀態']
+};
+function equipList(q){
+  const ids=new Set(q.items.map(i=>i.pid));const keys=[];const add=(...k)=>k.forEach(x=>{if(!keys.includes(x))keys.push(x)});
+  if(['imp','graft','auto','bba','sinus','ao4','bridge'].some(x=>ids.has(x)))add('flow','xguide','or','scanB','scanA');
+  if(ids.has('perio'))add('scaler');
+  if(ids.has('laser'))add('lasertip','biolase');
+  if(ids.has('ems')||(q.gifts||[]).some(g=>/EMS|噴砂/.test(g)))add('ems');
+  if(ids.has('ortho'))add('itero');
+  if(ids.has('micro'))add('zeiss');
+  if(['seda','ga','ao4seda','ao4ga'].includes(q.sed.type))add('anes','recovery');
+  const list=keys.map(k=>({src:'assets/'+EQUIP[k][0],cap:EQUIP[k][1],wide:!!EQUIP[k][2]}));
+  for(const pid of ids){for(const im of ((S.itemImgs||{})[pid]||[]))list.push({src:im.src,cap:im.cap,wide:false})}
+  return list;
+}
+function equipHTML(eq,brand,np){
+  if(!eq.length)return '';
+  return `<section class="sheet">${brand}
+   <section><h3 class="s-h">為您安排的設備與流程</h3><div class="equip">${eq.map(e=>`<figure class="${e.wide?'wide':''}"><img src="${e.src}" alt="${h(e.cap)}"><figcaption>${h(e.cap)}</figcaption></figure>`).join('')}</div></section>
+   <footer class="s-foot"><span>立威口腔顎面外科牙醫診所・治療計畫書</span><span>3 / ${np}</span></footer>
+  </section>`;
 }
 function teamHTML(q){
   const t=q.sed.type;if(!['seda','ao4seda','ga','ao4ga'].includes(t))return '';
@@ -628,11 +809,11 @@ function teamHTML(q){
   </section>`;
 }
 function planHTML(p,q){
-  const c=calc(p,q);
+  const c=calc(p,q);const eq=equipList(q);const np=eq.length?3:2;
   const doctor=q.doctor||p.doctor;
   const cm=p.consult&&p.consult===p.mgr?[['諮詢師／個案管理師',p.consult]]:[['諮詢師',p.consult||'—'],['個案管理師',p.mgr||'—']];
   const info=[['病人姓名',p.name],['病歷號',p.chart||'—'],['諮詢日期',q.date],['主治醫師',doctor?doctor+' 醫師':'—'],...cm];
-  const groups={};q.items.forEach((i,k)=>{const g=i.cat||'其他';(groups[g]=groups[g]||[]).push([i,c.lines[k]])});
+  const groups={};q.items.forEach((i,k)=>{const g=i.nhi?'健保項目':(i.cat||'其他');(groups[g]=groups[g]||[]).push([i,c.lines[k]])});if(groups['健保項目']){const x=groups['健保項目'];delete groups['健保項目'];groups['健保項目']=x}
   const recs=q.items.filter(i=>!i.gift);
   const pays=[...new Set(q.items.map(i=>priceOf(i.pid)).filter(r=>r&&r.pay).map(r=>`<li><b>${h(r.name)}</b>：${h(r.pay)}</li>`))];
   const photos=(p.photos||[]).filter(x=>x.use);
@@ -647,11 +828,11 @@ function planHTML(p,q){
     <div class="legend"><span><i style="background:var(--deep);border-color:var(--deep)"></i>本次植牙</span><span><i style="background:var(--yellow);border-color:#D9BC33"></i>牙橋假牙</span><span><i style="background:#5b6f86;border-color:#5b6f86"></i>已有植體</span><span><i style="background:#fff;border-style:dashed"></i>缺牙</span><span><i style="background:var(--skin);border-radius:50%;border-color:var(--skin)"></i>補骨／鼻竇增高</span></div></section>
    ${photos.length?`<section><h3 class="s-h">臨床照片</h3><div class="photos">${photos.map(x=>`<img src="${x.src}" alt="臨床照片">`).join('')}</div></section>`:''}
    <section><h3 class="s-h">治療建議</h3><div class="recs">${recs.map(i=>`<div class="rec"><span class="t">${i.teeth.length?h(i.teeth.join('·')):'全口'}</span>${h(i.name)}</div>`).join('')}</div></section>
-   <footer class="s-foot"><span>立威口腔顎面外科牙醫診所・治療計畫書</span><span>1 / 2</span></footer>
+   <footer class="s-foot"><span>立威口腔顎面外科牙醫診所・治療計畫書</span><span>1 / ${np}</span></footer>
   </section>
   <section class="sheet">${brand}
    <section><h3 class="s-h">治療項目與費用 <span class="muted" style="font-family:var(--body);letter-spacing:0;font-weight:400">${rateTxt}</span></h3><div class="tablewrap"><table class="fees"><thead><tr><th>牙位</th><th>項目</th><th class="r">單價</th><th class="r">數量</th><th class="r">金額</th></tr></thead><tbody>
-   ${Object.entries(groups).map(([g,list])=>`<tr class="g"><td colspan="5">${h(g)}</td></tr>`+list.map(([i,l])=>`<tr><td class="t">${i.teeth.length?h(i.teeth.join('·')):'全口'}</td><td>${h(i.name)}</td><td class="r">${i.gift?'贈送':(i.list>i.price?`<s class="was">${money(i.list)}</s><br>`:'')+money(i.price)+' / '+h(i.unit)}</td><td class="r">${i.qty} ${h(i.unit)}</td><td class="r">${i.gift?'<b>0</b>':(i.price==null?'待補':amt(l))}</td></tr>`).join('')).join('')}
+   ${Object.entries(groups).map(([g,list])=>`<tr class="g"><td colspan="5">${h(g)}</td></tr>`+list.map(([i,l])=>`<tr><td class="t">${i.teeth.length?h(i.teeth.join('·')):'全口'}</td><td>${h(i.name)}</td><td class="r">${i.nhi?'健保給付':i.gift?'贈送':(i.list>i.price?`<s class="was">${money(i.list)}</s><br>`:'')+money(i.price)+' / '+h(i.unit)}</td><td class="r">${i.qty} ${h(i.unit)}</td><td class="r">${i.nhi?'<b>健保</b>':i.gift?'<b>0</b>':(i.price==null?'待補':amt(l))}</td></tr>`).join('')).join('')}
    ${c.sedLabel?`<tr class="g"><td colspan="5">麻醉</td></tr><tr><td class="t">—</td><td colspan="3">${h(c.sedLabel)}</td><td class="r">${c.sed?amt({list:c.sed,final:c.sedFinal}):'健保'}</td></tr>`:''}
    ${q.gifts.length?`<tr class="g"><td colspan="5">贈送項目</td></tr><tr><td class="t">—</td><td colspan="3">${h(q.gifts.join('、'))}</td><td class="r">0</td></tr>`:''}
    ${c.dAmt?`<tr class="minus"><td></td><td colspan="3">專案優惠</td><td class="r"><b>−${money(c.dAmt)}</b></td></tr>`:''}
@@ -664,8 +845,8 @@ function planHTML(p,q){
    <section><h3 class="s-h">注意事項</h3><ul class="pay"><li>手術前請告知目前服用的藥物與全身病史。</li><li>安排鎮靜麻醉者，手術前 8 小時請勿進食，並請家屬陪同。</li><li>治療期間如需調整計畫，診所將另出新版計畫書供您確認。</li></ul></section>
    <section class="sign"><p>本人經醫師說明，了解並選擇上述治療方式，並已完全了解所有必須的費用。</p>
     <div class="sign-row"><div>病人簽名${q.sign?`<img src="${q.sign}" alt="簽名">`:''}</div><div>主治醫師　${h(doctor||'')}</div><div>日期　${q.signed?h(q.signedAt):''}</div></div></section>
-   <footer class="s-foot"><span>台北市大同區・立威口腔顎面外科牙醫診所</span><span>2 / 2</span></footer>
-  </section>`;
+   <footer class="s-foot"><span>台北市大同區・立威口腔顎面外科牙醫診所</span><span>2 / ${np}</span></footer>
+  </section>${equipHTML(eq,brand,np)}`;
 }
 function chartSVG(p,q){
   const st=planSets(q);const imp=st.imp,bridge=st.bridge,graft=st.graft;
@@ -702,8 +883,8 @@ function viewSettings(){
      <label class="f">醫囑常見寫法（用逗號分開）</label><input class="i" id="ap-alias" placeholder="例如 BBA,骨塊">
      <label class="f">付款節點</label><input class="i" id="ap-pay" placeholder="例如 資料收集 $5,000 → 手術日尾款繳清">
      <button class="btn pri block" style="margin-top:10px" onclick="act.addPrice()">加入價目表</button></div>`:''}
-   <div class="tablewrap"><table class="items"><thead><tr><th>項目</th><th>分類</th><th>價格</th><th>醫囑寫法</th></tr></thead><tbody>
-   ${S.prices.map((x,k)=>`<tr><td>${h(x.name)}</td><td>${h(x.cat)}</td><td style="white-space:nowrap">${x.min!=null&&x.max!=null&&x.min!==x.max?money(x.min)+'–'+money(x.max):money(x.price)} / ${h(x.unit)}</td><td class="muted">${h(x.alias.join('、'))}</td></tr>`).join('')}</tbody></table></div></div>
+   <div class="tablewrap"><table class="items"><thead><tr><th>項目</th><th>分類</th><th>價格</th><th>醫囑寫法</th><th>計畫書圖片</th></tr></thead><tbody>
+   ${S.prices.map((x,k)=>`<tr><td>${h(x.name)}</td><td>${h(x.cat)}</td><td style="white-space:nowrap">${x.min!=null&&x.max!=null&&x.min!==x.max?money(x.min)+'–'+money(x.max):money(x.price)} / ${h(x.unit)}</td><td class="muted">${h(x.alias.join('、'))}</td><td style="white-space:nowrap"><label class="btn sm" for="ii-${x.id}">＋圖片</label><input id="ii-${x.id}" type="file" accept="image/*" hidden onchange="act.itemImg('${x.id}',this)">${((S.itemImgs||{})[x.id]||[]).length?` <span class="pill">${S.itemImgs[x.id].length} 張</span> <button class="btn sm" onclick="act.itemImgClear('${x.id}')">清除</button>`:''}</td></tr>`).join('')}</tbody></table></div></div>
   <div class="card"><h2>試用資料</h2><p class="muted">清除這支手機上所有試用資料（帳號、病人、報價）。</p><button class="btn" onclick="act.reset()">清除全部試用資料</button></div>`;
 }
 
@@ -748,6 +929,13 @@ const act={
     else{p.teeth[t]={s:tmp.mode,x:+x.toFixed(2),y:+y.toFixed(2)};p.stack.push(t)}
     save();render();
   },
+  clearAll(){modal(`<h2>確定清除全部牙位標記？</h2><p class="muted">32 顆的狀態和 X 光上的位置都會清空，從 18 號重新開始。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doClear()">確定清除</button></div>`)},
+  doClear(){const p=P(V.pid);p.teeth={};p.stack=[];p.teethDone=false;tmp.sel=null;tmp.relocate=null;save();closeModal();toast('已清除，請從 18 號重新開始');render()},
+  roster(inp){const f=inp.files[0];if(!f)return;if(!window.XLSX)return toast('讀取工具載入中，請稍後再試');
+    const m=+document.getElementById('r-month').value;
+    f.arrayBuffer().then(buf=>{const wb=XLSX.read(buf,{cellStyles:true});const r=parseRoster(wb,m);
+      if(r.err){toast(r.err);return}
+      S.roster=Object.assign(r,{month:m,uploaded:today(),by:me().name});save();toast(m+' 月班表已上傳');go('home')}).catch(()=>toast('Excel 讀取失敗，請確認檔案格式'))},
   skip(){const p=P(V.pid);const t=nextTooth(p);if(!t)return;p.teeth[t]={s:'none'};p.stack.push(t);save();render()},
   undo(){const p=P(V.pid);const t=p.stack.pop();if(t){delete p.teeth[t];save();render()}},
   setTooth(t,s){const p=P(V.pid);if(p.teeth[t])p.teeth[t].s=s;else{p.teeth[t]={s};p.stack.push(t)}save();render()},
@@ -767,6 +955,8 @@ const act={
     const rate=orderRate(text);const p0=P(V.pid);
     tmp.q2={orders:text,items:r.items,bad:r.bad,notes:r.notes,doctor:old?old.doctor:(p0.doctor||''),date:old?old.date:today(),rate,sed:old?old.sed:{type:'none',hours:2,count:1},disc:rate?(rate===0.95?'95':rate===0.9?'90':'rate'):(old?old.disc:'none'),discAmt:old?old.discAmt:'',gifts:old?old.gifts:[],mkt:old?old.mkt:'none',mktAmt:old?old.mktAmt:'',auth:old?old.auth:[],validDays:old?old.validDays:7};
     for(const i of tmp.q2.items)if(i.pid==='ems'&&!i.gift){i.gift=true;i.price=0;i.orig=0}
+    if(!old||old.sed.type==='none'){const ao=/ao4|all-?on-?4/i.test(text);
+      if(/全麻|全身麻醉/.test(text))tmp.q2.sed.type=ao?'ao4ga':'ga';else if(/tci|舒眠|鎮靜/i.test(text))tmp.q2.sed.type=ao?'ao4seda':'seda';}
     render();
   },
   itemSet(k,f,v){const i=tmp.q2.items[k];
@@ -817,6 +1007,8 @@ const act={
       modal(`<h2>PNG 圖片</h2><p class="muted">手機請長按圖片儲存；電腦可點「下載」。</p>${urls.map((u,i)=>`<img src="${u}" style="width:100%;border:1px solid var(--line);margin-bottom:8px"><a class="btn sm" href="${u}" download="治療計畫書_第${V.v}版_${i+1}.png">下載第 ${i+1} 頁</a>`).join('<hr style="border:0;border-top:1px solid var(--line);margin:12px 0">')}<button class="btn block" style="margin-top:12px" onclick="closeModal()">關閉</button>`);
     }).catch(()=>{document.body.classList.remove('exporting');toast('圖片產生失敗，請改用 PDF')});
   },
+  itemImg(pid,inp){const f=inp.files[0];if(!f)return;const it=priceOf(pid);compress(f,1000,0.8).then(d=>{S.itemImgs[pid]=S.itemImgs[pid]||[];S.itemImgs[pid].push({src:d,cap:it?it.name:''});save();toast('已加入圖片，出現此療程時會放進計畫書');render()})},
+  itemImgClear(pid){delete S.itemImgs[pid];save();render()},
   role(acc,r){const u=S.users.find(x=>x.acc===acc);u.role=r;save();toast('已更新 '+u.name+' 的角色')},
   addPrice(){const g=id=>document.getElementById(id).value.trim();const name=g('ap-name');if(!name)return toast('請填療程名稱');
     const min=g('ap-min')===''?null:+g('ap-min'),max=g('ap-max')===''?min:+g('ap-max');
