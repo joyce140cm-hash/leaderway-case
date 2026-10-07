@@ -124,7 +124,7 @@ textarea.i{min-height:150px}
 .fees tr.minus td{color:var(--good)}
 .total{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:2px solid var(--ink);padding-top:12px}
 .total .sum{font-family:var(--display);letter-spacing:.1em}
-.total .sum strong{font-size:28px;color:var(--deep);margin-left:8px;background:linear-gradient(transparent 62%,var(--yellow) 62%,var(--yellow) 92%,transparent 92%);padding:0 4px;letter-spacing:.02em}
+.total .sum{text-align:right}.total .sum strong{font-size:28px;color:var(--deep);margin-left:8px;background:linear-gradient(transparent 62%,var(--yellow) 62%,var(--yellow) 92%,transparent 92%);padding:0 4px;letter-spacing:.02em}
 .pay{margin:0;padding-left:1.2em;font-size:13px}
 .sign{border:1px solid var(--ink);border-radius:4px;padding:14px 18px;display:flex;flex-direction:column;gap:16px}
 .sign p{margin:0;font-size:13px}
@@ -138,6 +138,26 @@ body.present .top,body.present .nav,body.present .demo,body.present .toolbar,bod
 body.present main{max-width:none;padding:0}
 body.present .exitp{display:block}
 .exitp{display:none;position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:30}
+.photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.photos img{width:100%;border-radius:4px;display:block}
+.ann{position:relative;container-type:inline-size}
+.ann .a-num{position:absolute;transform:translate(-50%,-50%);font-size:2.6cqw;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:4px;padding:0 .4cqw;line-height:1.35}
+.ann .a-num.hot{background:#FD4F00}
+.ann .a-ic{position:absolute;transform:translate(-50%,-50%);display:block}
+.ann .a-xx{position:absolute;transform:translate(-50%,-50%);font-size:3.4cqw;color:#d8cfc8;letter-spacing:-.4cqw;text-shadow:0 0 3px #000}
+.ann .a-xx.red{color:#ff5a3c}
+.ann .a-rect{position:absolute;transform:translate(-50%,-50%);width:3.2%;height:9%;border:2px solid #fff;border-radius:2px;box-shadow:0 0 3px #000}
+.ann .a-dot{position:absolute;transform:translate(-50%,-50%);width:1.6%;aspect-ratio:1;border-radius:50%;background:#ff7a59}
+.ann .a-graft{position:absolute;transform:translate(-50%,-50%);width:4.6%;aspect-ratio:1;border:2px dashed #F2C49E;border-radius:50%}
+.ann .a-bridge{position:absolute;border:2.5px solid #F7DF62;border-radius:10px;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.team{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.team div{background:var(--cream);border-radius:6px;padding:8px 12px}
+.team b{display:block}.team span{font-size:12.5px;color:var(--muted)}
+s.was{color:#9a8b80;font-weight:400;font-size:12px}
+b.now{color:var(--deep)}
+.total .origsum{display:block;font-family:var(--body);font-size:13px;color:#9a8b80;letter-spacing:0;text-align:right}
+.exp{display:none}
+body.exporting .scr{display:none}body.exporting .exp{display:inline}
 canvas.pad{width:100%;height:200px;border:1px dashed var(--muted);border-radius:8px;touch-action:none;background:#fff}
 @media print{
   @page{size:A4;margin:10mm}
@@ -145,6 +165,7 @@ canvas.pad{width:100%;height:200px;border:1px dashed var(--muted);border-radius:
   .top,.nav,.demo,.toolbar,.internal,.toast,.exitp{display:none!important}
   main{padding:0;max-width:none}
   .sheet{box-shadow:none;padding:0;page-break-after:always;max-width:none}
+  .scr{display:none!important}.exp{display:inline!important}
 }
 </style>
 </head>
@@ -197,6 +218,7 @@ const DEFAULT_PRICES=[
 const GIFTS=['每次定檢塗氟','維持器乙副','美白噴砂','居家美白','冷光美白','EMS 清潔乙次'];
 const SED={
   none:{label:'不需要'},
+  local:{label:'局部麻醉',nhi:true},
   seda:{label:'鎮靜舒眠',base:28000,inc:2,over:3000,childBase:30000},
   ga:{label:'全身麻醉',base:36000,inc:2,over:4000,noChild:true},
   ao4seda:{label:'AO4 舒眠',base:50000,inc:6,over:3000},
@@ -343,6 +365,8 @@ function viewPatient(){
   <div class="card"><div class="muted">病歷號 ${d(p.chart)}${age!=null?'・'+age+' 歲'+(age<=12?'（兒童）':''):''}・職業 ${d(p.job)}・地區 ${d(p.area)}</div>
   <div style="margin-top:4px">主治醫師：${d(p.doctor)}・${cm}・來源：${d(p.src)}</div></div>
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">牙位</h2><span class="pill ${p.teethDone?'g':'y'}">${p.teethDone?'已確認':'未完成'}</span><button class="btn sm" onclick="go('mark',{pid:'${p.id}'})">${p.teethDone?'修改牙位':'開始標牙位'}</button></div></div>
+  <div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">臨床照片</h2><label class="btn sm" for="pp-photo">＋上傳照片</label><input id="pp-photo" type="file" accept="image/*" multiple hidden onchange="act.addPhotos(this)"></div>
+   ${(p.photos||[]).length?`<div class="vers">${p.photos.map(x=>`<div class="ver" style="padding:6px"><img src="${x.src}" style="width:100%;border-radius:6px;display:block"><label style="font-size:13px;display:block;margin-top:4px"><input type="checkbox" ${x.use?'checked':''} onchange="act.photoUse('${x.id}',this.checked)"> 放入計畫書</label><button class="btn sm" style="margin-top:4px" onclick="act.photoDel('${x.id}')">移除</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">上傳時會自動壓縮，勾選的照片會放進計畫書。</p>'}</div>
   <div class="card"><div class="row" style="margin-bottom:10px"><h2 class="grow" style="margin:0">報價紀錄</h2><button class="btn pri sm" onclick="act.newQuote('${p.id}')">＋貼醫囑出報價</button></div>
    ${p.quotes.length?`<div class="vers">${p.quotes.slice().reverse().map(q=>`<button class="ver" onclick="go('plan',{pid:'${p.id}',v:${q.v}})"><b>第 ${q.v} 版</b><span class="muted">${h(q.date)}</span><div style="font-weight:700;color:var(--deep)">NT$ ${money(calc(p,q).total)}</div><span class="pill ${q.signed?'g':''}">${q.signed?'已簽名':'草稿'}</span></button>`).join('')}</div>`:'<p class="muted">還沒有報價。</p>'}
   </div>`;
@@ -397,6 +421,7 @@ function parseOrders(text){
   const items=[],bad=[],notes=[];
   const segs=text.split(/\n|＋|\+|；|;|，|,|。|\/(?=\D)/).map(s=>s.trim()).filter(Boolean);
   for(let seg of segs){
+    if(/^[\s\d.]*折[\s優惠]*$/.test(seg))continue;
     let price=null,m;
     if((m=seg.match(/(\d+(?:\.\d+)?)\s*萬/))){price=Math.round(parseFloat(m[1])*10000);seg=seg.replace(m[0],' ')}
     else if((m=seg.match(/\$?\s?(\d{1,3}(?:,\d{3})+|\d{4,})/))){price=parseInt(m[1].replace(/,/g,''),10);seg=seg.replace(m[0],' ')}
@@ -420,12 +445,17 @@ function parseOrders(text){
   return {items,bad,notes};
 }
 function mkItem(it,teeth,price,o={}){
-  const unitPrice=o.gift?0:(price!=null?price:(it?(it.front&&teeth.length&&isFront(teeth[0])?it.front:it.price):null));
+  const listPrice=it?(it.front&&teeth.length&&isFront(teeth[0])?it.front:it.price):null;
+  const unitPrice=o.gift?0:(price!=null?price:listPrice);
   let qty=1;
   if(it&&it.unit==='顆')qty=Math.max(teeth.length,1);
   if(it&&it.unit==='顎')qty=Math.max(o.arches||1,1);
-  return {pid:it?it.id:null,name:it?(it.id==='laser'||o.whole?(it.name.startsWith('全口')?it.name:'全口'+it.name):it.name):o.label,cat:it?it.cat:'',unit:it?it.unit:'次',teeth,qty,price:unitPrice,orig:unitPrice,reason:'',gift:!!o.gift,auto:o.auto||'',fromOrders:price!=null};
+  return {pid:it?it.id:null,name:it?(it.id==='laser'||o.whole?(it.name.startsWith('全口')?it.name:'全口'+it.name):it.name):o.label,cat:it?it.cat:'',unit:it?it.unit:'次',teeth,qty,price:unitPrice,orig:unitPrice,list:o.gift?0:(listPrice!=null&&unitPrice!=null&&listPrice>unitPrice?listPrice:unitPrice),reason:'',gift:!!o.gift,auto:o.auto||'',fromOrders:price!=null};
 }
+function orderRate(text){const m=String(text||'').match(/(\d{1,2}(?:\.\d)?)\s*折/);if(!m)return null;let n=parseFloat(m[1]);n=n>=10?n/100:n/10;return n>0&&n<1?n:null}
+const RATES={none:1,'95':0.95,'90':0.9};
+function rateOf(q){return q.disc==='rate'?(q.rate||1):(RATES[q.disc]||1)}
+const minsLabel=m=>m<60?m+' 分鐘':(m/60)+' 小時';
 function checks(p,q){
   const out=[];const its=q.items;const all=q.orders||'';
   const hasExt=/拔/.test(all);
@@ -452,23 +482,32 @@ function checks(p,q){
   return out;
 }
 function calc(p,q){
-  let sub=0;for(const i of q.items)if(!i.gift&&i.price!=null)sub+=i.price*i.qty;
+  const rate=rateOf(q);
+  let listSum=0,finalSum=0;const lines=[];
+  for(const i of q.items){
+    if(i.gift||i.price==null){lines.push({list:0,final:0});continue}
+    const list=(i.list!=null?Math.max(i.list,i.price):i.price)*i.qty;
+    const final=Math.round(i.price*i.qty*rate);
+    lines.push({list,final});listSum+=list;finalSum+=final;
+  }
   const age=ageOf(p.chart);const child=age!=null&&age<=12;
-  let sed=0,sedLabel='';
+  let sed=0,sedLabel='',sedFinal=0;
   const sd=SED[q.sed.type];
-  if(q.sed.type!=='none'&&sd){
+  if(sd&&sd.nhi){sedLabel='局部麻醉（健保給付）'}
+  else if(q.sed.type!=='none'&&sd){
     const base=child&&sd.childBase?sd.childBase:sd.base;
     const extra=Math.max(0,Math.ceil((Number(q.sed.hours||0)-sd.inc)/0.5-1e-9));
     const one=base+extra*sd.over;sed=one*Math.max(1,+q.sed.count||1);
-    sedLabel=`${sd.label}${child&&sd.childBase?'（兒童）':''} 基本 ${sd.inc} 小時 ${money(base)}${extra?`＋超時 ${extra} 個半小時 × ${money(sd.over)}`:''}${(+q.sed.count||1)>1?` × ${q.sed.count} 次手術`:''}`;
+    sedLabel=`${sd.label}${child&&sd.childBase?'（兒童）':''}：基本 ${sd.inc} 小時 ${money(base)}${extra?`＋超時 ${extra} 個半小時 × ${money(sd.over)}`:''}${(+q.sed.count||1)>1?` × ${q.sed.count} 次手術`:''}（預計 ${minsLabel(Math.round((+q.sed.hours||0)*60))}）`;
+    sedFinal=Math.round(sed*rate);
   }
-  const gross=sub+sed;
-  const d95=q.disc==='95'?Math.round(gross*0.05):0;
+  const orig=listSum+sed;
+  const afterRate=finalSum+sedFinal;
   const dAmt=q.disc==='amt'?(+q.discAmt||0):0;
   const mk=q.mkt&&MKT[q.mkt]?(q.mkt==='custom'?(+q.mktAmt||0):MKT[q.mkt].off):0;
-  const total=gross-d95-dAmt-mk;
+  const total=afterRate-dAmt-mk;
   let dep=0;for(const i of q.items){const r=priceOf(i.pid);if(r&&r.dep&&!i.gift)dep+=r.dep*(r.unit==='區'||r.unit==='次'?1:i.qty)}
-  return {sub,sed,sedLabel,gross,d95,dAmt,mk,total,dep,child};
+  return {lines,sed,sedFinal,sedLabel,orig,dAmt,mk,total,dep,child,rate,discounted:total<orig};
 }
 
 /* ---- 貼醫囑 ---- */
@@ -476,17 +515,22 @@ function viewOrders(){
   const p=P(V.pid);if(!p)return '';
   const q=tmp.q2;
   const age=ageOf(p.chart),child=age!=null&&age<=12;
-  const opt=(o,sel)=>Object.entries(o).filter(([k,v])=>!(child&&v.noChild)).map(([k,v])=>`<option value="${k}" ${k===sel?'selected':''}>${v.label}</option>`).join('');
+  const opt=(o,sel)=>Object.entries(o).filter(([k,v])=>!(child&&v.noChild)).map(([k,v])=>`<option value="${k}" ${k===sel?'selected':''}>${v.label}${v.nhi?'（健保給付）':''}</option>`).join('');
+  const mins=[];for(let m=30;m<=480;m+=15)mins.push(m);
+  const c=q?calc(p,q):null;
+  const showMkt=q&&(tmp.promo||q.mkt!=='none');
   return `<div class="row"><button class="btn sm" onclick="go('patient',{pid:'${p.id}'})">← ${h(p.name)}</button></div>
-  <h1 style="margin-top:10px">${tmp.editV?'修改第 '+tmp.editV+' 版':'貼醫囑出報價'}</h1>
+  <h1 style="margin-top:10px">${tmp.editV?'修改第 '+tmp.editV+' 版':(tmp.promo?'加入優惠方案（另開新版）':'貼醫囑出報價')}</h1>
   <div class="card"><label class="f" for="ord">醫師醫囑（直接貼上）</label>
    <textarea class="i" id="ord" placeholder="例如：16.36.46 植牙">${h(q?q.orders:'')}</textarea>
    <div class="row" style="margin-top:10px"><button class="btn" onclick="document.getElementById('ord').value=SAMPLE;">填入範例醫囑</button><button class="btn pri grow" onclick="act.parse()">解析醫囑</button></div></div>
   ${q?`
-  <div class="card"><h2>檢查清單</h2><ul class="chk">${checks(p,q).map(([c,t])=>`<li><span class="dot ${c}"></span><span>${h(t)}</span></li>`).join('')}</ul>
-   <p class="muted" style="margin:8px 0 0">${checks(p,q).some(c=>c[0]==='r')?'有紅色項目：請病人稍等，先和醫師確認。':'沒有紅色項目，可以直接出計畫書。'}</p></div>
+  <div class="card"><div class="row"><div class="grow"><label class="f" for="q-doc">主治醫師</label><input class="i" id="q-doc" list="doclist" value="${h(q.doctor||'')}" placeholder="可直接輸入" onchange="tmp.q2.doctor=this.value"><datalist id="doclist">${DOCTORS.map(d=>`<option value="${d}">`).join('')}</datalist></div>
+   <div style="width:150px"><label class="f" for="q-date">諮詢日期</label><input class="i" id="q-date" value="${h(q.date||today())}" onchange="tmp.q2.date=this.value"></div></div></div>
+  <div class="card"><h2>檢查清單</h2><ul class="chk">${checks(p,q).map(([cc,t])=>`<li><span class="dot ${cc}"></span><span>${h(t)}</span></li>`).join('')}</ul>
+   <p class="muted" style="margin:8px 0 0">${checks(p,q).some(x=>x[0]==='r')?'有紅色項目：請病人稍等，先和醫師確認。':'沒有紅色項目，可以直接出計畫書。'}</p></div>
   <div class="card"><h2>治療項目</h2><div class="tablewrap"><table class="items"><thead><tr><th style="min-width:110px">項目</th><th style="min-width:80px">牙位</th><th>數量</th><th style="min-width:90px">單價</th><th></th></tr></thead><tbody>
-   ${q.items.map((i,k)=>`<tr><td><select onchange="act.itemSet(${k},'pid',this.value)"><option value="">請選擇</option>${S.prices.map(x=>`<option value="${x.id}" ${x.id===i.pid?'selected':''}>${h(x.name)}</option>`).join('')}</select>${i.gift?'<span class="pill g">贈送</span>':''}</td>
+   ${q.items.map((i,k)=>`<tr><td><select onchange="act.itemSet(${k},'pid',this.value)"><option value="">請選擇</option>${S.prices.map(x=>`<option value="${x.id}" ${x.id===i.pid?'selected':''}>${h(x.name)}</option>`).join('')}</select>${i.gift?'<span class="pill g">贈送</span>':''}${!i.gift&&i.list!=null&&i.price!=null&&i.list>i.price?`<span class="pill y">醫師折扣 原價 ${money(i.list)}</span>`:''}</td>
    <td><input value="${h(i.teeth.join('.'))}" onchange="act.itemSet(${k},'teeth',this.value)" placeholder="全口"></td>
    <td><input type="number" min="1" value="${i.qty}" onchange="act.itemSet(${k},'qty',this.value)" style="width:56px"></td>
    <td><input type="number" value="${i.price??''}" placeholder="待補" onchange="act.itemSet(${k},'price',this.value)">${i.orig!==i.price&&i.orig!=null?`<input value="${h(i.reason)}" placeholder="改價原因（必填）" onchange="act.itemSet(${k},'reason',this.value)" style="margin-top:4px;border-color:var(--deep)">`:''}</td>
@@ -494,19 +538,19 @@ function viewOrders(){
    </tbody></table></div><button class="btn sm" style="margin-top:8px" onclick="act.itemAdd()">＋新增項目</button></div>
   <div class="card"><h2>麻醉</h2>
    <div class="row"><div class="grow"><label class="f">類型${child?'（兒童）':''}</label><select class="i" onchange="tmp.q2.sed.type=this.value;render()">${opt(SED,q.sed.type)}</select></div>
-   <div style="width:110px"><label class="f">預計時數</label><input class="i" type="number" step="0.5" min="0" value="${q.sed.hours}" onchange="tmp.q2.sed.hours=this.value;render()"></div>
-   <div style="width:90px"><label class="f">手術次數</label><input class="i" type="number" min="1" value="${q.sed.count}" onchange="tmp.q2.sed.count=this.value;render()"></div></div>
-   ${q.sed.type!=='none'?`<p class="muted" style="margin:8px 0 0">${h(calc(p,q).sedLabel)} ＝ NT$ ${money(calc(p,q).sed)}</p>`:''}</div>
-  <div class="card"><h2>折扣與行銷方案</h2>
-   <label class="f">折扣</label><select class="i" onchange="tmp.q2.disc=this.value;render()"><option value="none" ${q.disc==='none'?'selected':''}>無</option><option value="95" ${q.disc==='95'?'selected':''}>95 折（諮詢師權限）</option><option value="amt" ${q.disc==='amt'?'selected':''}>自訂金額（需主管或醫師核准）</option></select>
+   ${q.sed.type!=='none'&&q.sed.type!=='local'?`<div style="width:120px"><label class="f">預計時間</label><select class="i" onchange="tmp.q2.sed.hours=(+this.value)/60;render()">${mins.map(m=>`<option value="${m}" ${Math.round((+q.sed.hours||0)*60)===m?'selected':''}>${minsLabel(m)}</option>`).join('')}</select></div>
+   <div style="width:90px"><label class="f">手術次數</label><input class="i" type="number" min="1" value="${q.sed.count}" onchange="tmp.q2.sed.count=this.value;render()"></div>`:''}</div>
+   ${q.sed.type!=='none'?`<p class="muted" style="margin:8px 0 0">${h(c.sedLabel)}${c.sed?' ＝ NT$ '+money(c.sed):''}</p>`:''}</div>
+  <div class="card"><h2>折扣</h2>
+   <select class="i" onchange="tmp.q2.disc=this.value;render()"><option value="none" ${q.disc==='none'?'selected':''}>無</option><option value="95" ${q.disc==='95'?'selected':''}>95 折</option><option value="90" ${q.disc==='90'?'selected':''}>9 折</option>${q.rate?`<option value="rate" ${q.disc==='rate'?'selected':''}>醫囑折數（${Math.round(q.rate*100)} 折）</option>`:''}<option value="amt" ${q.disc==='amt'?'selected':''}>自訂金額（需主管或醫師核准）</option></select>
    ${q.disc==='amt'?`<input class="i" style="margin-top:6px" type="number" placeholder="折扣金額" value="${q.discAmt||''}" onchange="tmp.q2.discAmt=this.value;render()">`:''}
    <label class="f">贈送項目</label><div class="row">${GIFTS.map(g=>`<label style="font-size:14px"><input type="checkbox" ${q.gifts.includes(g)?'checked':''} onchange="act.gift('${g}',this.checked)"> ${g}</label>`).join('')}</div>
-   <label class="f">行銷方案</label><select class="i" onchange="tmp.q2.mkt=this.value;render()">${Object.entries(MKT).map(([k,v])=>`<option value="${k}" ${k===q.mkt?'selected':''}>${v.label}${v.off?'（折 '+money(v.off)+'）':''}</option>`).join('')}</select>
+   ${showMkt?`<label class="f">行銷方案</label><select class="i" onchange="tmp.q2.mkt=this.value;render()">${Object.entries(MKT).map(([k,v])=>`<option value="${k}" ${k===q.mkt?'selected':''}>${v.label}${v.off?'（折 '+money(v.off)+'）':''}</option>`).join('')}</select>
    ${q.mkt==='custom'?`<input class="i" style="margin-top:6px" type="number" placeholder="行銷折扣金額" value="${q.mktAmt||''}" onchange="tmp.q2.mktAmt=this.value;render()">`:''}
-   ${q.mkt!=='none'?`<label class="f">授權範圍</label><div class="row">${['可露臉','遮眼睛','不露臉','影片','照片','Google 評論','BA 圖','廣告投放'].map(g=>`<label style="font-size:14px"><input type="checkbox" ${q.auth.includes(g)?'checked':''} onchange="act.auth('${g}',this.checked)"> ${g}</label>`).join('')}</div>`:''}
+   ${q.mkt!=='none'?`<label class="f">授權範圍</label><div class="row">${['可露臉','遮眼睛','不露臉','影片','照片','Google 評論','BA 圖','廣告投放'].map(g=>`<label style="font-size:14px"><input type="checkbox" ${q.auth.includes(g)?'checked':''} onchange="act.auth('${g}',this.checked)"> ${g}</label>`).join('')}</div>`:''}`:'<p class="muted" style="margin:10px 0 0">行銷方案在病人覺得費用太高時，從計畫書按「加入優惠方案」另開新版。</p>'}
    <label class="f">給病人考慮</label><select class="i" onchange="tmp.q2.validDays=+this.value">${[3,7,14,30].map(d=>`<option value="${d}" ${q.validDays===d?'selected':''}>${d} 天</option>`).join('')}</select>
   </div>
-  <div class="card"><div class="row"><div class="grow"><div class="muted">治療總額</div><b style="font-size:24px;color:var(--deep)">NT$ ${money(calc(p,q).total)}</b></div><button class="btn deep" onclick="act.saveQuote()">產生計畫書</button></div></div>`:''}`;
+  <div class="card"><div class="row"><div class="grow"><div class="muted">治療總額</div>${c.discounted?`<s style="color:#9a8b80">NT$ ${money(c.orig)}</s><br>`:''}<b style="font-size:24px;color:var(--deep);${c.discounted?'background:var(--yellow);padding:0 4px':''}">NT$ ${money(c.total)}</b></div><button class="btn deep" onclick="act.saveQuote()">產生計畫書</button></div></div>`:''}`;
 }
 const SAMPLE=`16.12.22.36.46 植牙
 46 自體骨 5萬
@@ -522,6 +566,8 @@ function viewPlan(){
   const p=P(V.pid);const q=p&&quoteOf(p,V.v);if(!q)return '<p>找不到報價</p>';
   return `<div class="toolbar"><button class="btn sm" onclick="go('patient',{pid:'${p.id}'})">← 資料夾</button>
    <button class="btn sm" onclick="act.edit()">${q.signed?'開新版本修改':'編輯'}</button>
+   <button class="btn sm" onclick="act.promo()">加入優惠方案</button>
+   <label class="btn sm" for="pl-photo">上傳照片</label><input id="pl-photo" type="file" accept="image/*" multiple hidden onchange="act.addPhotos(this)">
    <button class="btn sm" onclick="act.signOpen()" ${q.signed?'disabled':''}>病人簽名</button>
    <button class="btn sm" onclick="window.print()">輸出 PDF</button>
    <button class="btn sm" onclick="act.png()">輸出 PNG</button>
@@ -529,58 +575,115 @@ function viewPlan(){
   <div id="sheetWrap">${planHTML(p,q)}</div>
   ${q.log.length?`<div class="card internal" style="margin-top:16px"><h2>修改紀錄（內部，不會印出）</h2>${q.log.map(l=>`<div class="muted">${h(l)}</div>`).join('')}</div>`:''}`;
 }
+const SCREW=c=>`<svg viewBox="0 0 10 26" width="100%" height="100%"><rect x="1.5" y="0.5" width="7" height="5" rx="1.2" fill="${c}"/><path d="M2 7.5 L2 19 L5 25 L8 19 L8 7.5 Z" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="1.1"/><path d="M1.5 9.5h7M1.5 12.5h7M1.5 15.5h7M2.5 18.5h5" stroke="${c}" stroke-width="1.3"/></svg>`;
+const CAP=c=>`<svg viewBox="0 0 20 12" width="100%" height="100%"><path d="M2 11 C2 3 6 1 10 1 C14 1 18 3 18 11" fill="none" stroke="${c}" stroke-width="2.2"/></svg>`;
+function planSets(q){
+  const S2={imp:new Set(),ext:new Set(),bridge:new Set(),veneer:new Set(),crown:new Set(),graft:{}};
+  for(const i of q.items)for(const t of i.teeth){
+    if(i.pid==='imp')S2.imp.add(t);if(i.pid==='ext'||i.pid==='col')S2.ext.add(t);if(i.pid==='bridge')S2.bridge.add(t);
+    if(i.pid==='veneer')S2.veneer.add(t);if(i.pid==='crown'||i.pid==='onlay')S2.crown.add(t);
+    if(['graft','auto','bba'].includes(i.pid))S2.graft[t]='補骨';if(i.pid==='sinus')S2.graft[t]='鼻竇';}
+  return S2;
+}
+function xrayAnn(p,q){
+  if(!p.xray)return '<div class="s-xray empty">未上傳 X 光</div>';
+  const st=planSets(q);const pos=t=>p.teeth[t]&&p.teeth[t].x!=null?p.teeth[t]:null;
+  let out='';
+  const spans=[];
+  for(const row of [UPPER,LOWER]){
+    const idx=row.map((t,i)=>st.bridge.has(t)?i:-1).filter(i=>i>=0);
+    let grp=[];const flush=()=>{if(!grp.length)return;let a=grp[0],z=grp.at(-1);if(a>0&&st.imp.has(row.at(a-1)))a--;if(z<row.length-1&&st.imp.has(row.at(z+1)))z++;spans.push(row.slice(a,z+1));grp=[]};
+    for(const i of idx){if(grp.length&&i!==grp.at(-1)+1)flush();grp.push(i)}flush();
+  }
+  for(const sp of spans){const pts=sp.map(pos).filter(Boolean);if(!pts.length)continue;
+    const x1=Math.min(...pts.map(d=>d.x))-2.6,x2=Math.max(...pts.map(d=>d.x))+2.6,y=pts.reduce((s,d)=>s+d.y,0)/pts.length;
+    out+=`<span class="a-bridge" style="left:${x1}%;width:${x2-x1}%;top:${y-7}%;height:14%"></span>`}
+  for(const t of ORDER){const d=pos(t);if(!d)continue;const s=p.teeth[t].s;const up=Math.floor(t/10)<=2;
+    let sym='';
+    if(st.imp.has(t))sym=`<span class="a-ic" style="left:${d.x}%;top:${d.y}%;width:2.6%;height:13%">${SCREW('#FD4F00')}</span>`;
+    else if(st.ext.has(t))sym=`<b class="a-xx red" style="left:${d.x}%;top:${d.y}%">××</b>`;
+    else if(st.veneer.has(t))sym=`<span class="a-rect" style="left:${d.x}%;top:${d.y}%"></span>`;
+    else if(st.crown.has(t))sym=`<span class="a-ic" style="left:${d.x}%;top:${d.y+(up?2:-2)}%;width:4%;height:5%;${up?'transform:translate(-50%,-50%) rotate(180deg)':''}">${CAP('#F7DF62')}</span>`;
+    else if(s==='miss'||s==='none')sym=`<b class="a-xx" style="left:${d.x}%;top:${d.y}%">××</b>`;
+    else if(s==='imp')sym=`<span class="a-ic" style="left:${d.x}%;top:${d.y}%;width:2.4%;height:12%">${SCREW('#9fc0e6')}</span>`;
+    else if(s==='crown')sym=`<span class="a-ic" style="left:${d.x}%;top:${d.y+(up?2:-2)}%;width:4%;height:5%;${up?'transform:translate(-50%,-50%) rotate(180deg)':''}">${CAP('#F2C49E')}</span>`;
+    else if(s==='root')sym=`<span class="a-dot" style="left:${d.x}%;top:${d.y}%"></span>`;
+    if(st.graft[t])sym+=`<span class="a-graft" style="left:${d.x}%;top:${d.y+(up?-9:9)}%"></span>`;
+    const hot=st.imp.has(t)||st.ext.has(t)||st.bridge.has(t)||st.veneer.has(t)||st.crown.has(t)||st.graft[t];
+    out+=sym+`<span class="a-num ${hot?'hot':''}" style="left:${d.x}%;top:${d.y+(up?-15:15)}%">${t}</span>`;
+  }
+  return `<div class="s-xray ann"><img src="${p.xray}" alt="全景 X 光">${out}</div>
+  <div class="legend"><span><b style="color:#FD4F00">螺絲</b> 植牙</span><span><b style="color:#ff5a3c">××</b> 拔牙</span><span><b style="color:#9b8a7d">××</b> 缺牙</span><span><i style="background:none;border:2px solid #E2C21F"></i>牙橋</span><span><i style="background:none;border:2px solid #fff;outline:1px solid #ccc"></i>貼片</span><span><i style="background:none;border:2px dashed #F2C49E;border-radius:50%"></i>補骨／鼻竇增高</span></div>`;
+}
+function teamHTML(q){
+  const t=q.sed.type;if(!['seda','ao4seda','ga','ao4ga'].includes(t))return '';
+  const ga=t==='ga'||t==='ao4ga';
+  return `<section><h3 class="s-h">麻醉安全團隊</h3>
+   <p style="margin:0 0 8px">優先安排<b>立威特約麻醉專科醫師 林涵宇</b>；時間無法配合時，由合作團隊<b>訢辰麻醉舒眠</b>的麻醉醫師執行。</p>
+   <p class="muted" style="margin:0 0 10px"><span class="scr">訢辰麻醉舒眠：台灣最棒、最有名的麻醉團隊，幾乎每間手術診所都與他們合作。</span><span class="exp">訢辰麻醉舒眠：國內眾多手術診所長期合作的專業麻醉團隊。</span></p>
+   ${ga?`<div class="team"><div><b>麻醉醫師</b><span>負責麻醉深度、呼吸道與用藥判斷</span></div><div><b>麻醉護理師</b><span>負責生命徵象紀錄、給藥與術中照護</span></div><div><b>立威護理師</b><span>負責術後恢復與照護</span></div></div>
+   <p class="muted" style="margin:8px 0 0">全身麻醉由 3 位專業人員共同守護：麻醉醫師與麻醉護理師兩人同時監測，術後再由診所護理師照護。</p>`
+   :`<div class="team"><div><b>麻醉醫師</b><span>全程監控生命徵象與腦波</span></div></div>
+   <p class="muted" style="margin:8px 0 0">鎮靜舒眠採用 TCI 電腦目標濃度控制，藥物濃度精準穩定、相對安全，因此由一位麻醉醫師全程監控即可。</p>`}
+  </section>`;
+}
 function planHTML(p,q){
   const c=calc(p,q);
+  const doctor=q.doctor||p.doctor;
   const cm=p.consult&&p.consult===p.mgr?[['諮詢師／個案管理師',p.consult]]:[['諮詢師',p.consult||'—'],['個案管理師',p.mgr||'—']];
-  const info=[['病人姓名',p.name],['病歷號',p.chart||'—'],['諮詢日期',q.date],['主治醫師',p.doctor?p.doctor+' 醫師':'—'],...cm];
-  const groups={};for(const i of q.items){const g=i.cat||'其他';(groups[g]=groups[g]||[]).push(i)}
+  const info=[['病人姓名',p.name],['病歷號',p.chart||'—'],['諮詢日期',q.date],['主治醫師',doctor?doctor+' 醫師':'—'],...cm];
+  const groups={};q.items.forEach((i,k)=>{const g=i.cat||'其他';(groups[g]=groups[g]||[]).push([i,c.lines[k]])});
   const recs=q.items.filter(i=>!i.gift);
   const pays=[...new Set(q.items.map(i=>priceOf(i.pid)).filter(r=>r&&r.pay).map(r=>`<li><b>${h(r.name)}</b>：${h(r.pay)}</li>`))];
+  const photos=(p.photos||[]).filter(x=>x.use);
+  const rateTxt=c.rate<1?`（已套用 ${Math.round(c.rate*100)} 折）`:'';
+  const amt=(l)=>l.list>l.final?`<s class="was">${money(l.list)}</s><br><b class="now">${money(l.final)}</b>`:`<b>${money(l.final)}</b>`;
   const brand=`<header class="s-head"><div class="s-brand"><div class="m">立</div><div><b>立威口腔顎面外科牙醫診所</b><small>LEADER WAY OMS DENTAL CLINIC</small></div></div><div class="s-meta"><span class="pill">第 ${q.v} 版報價</span><br>${h(q.date)}</div></header>`;
   return `<section class="sheet">${brand}
    <h2 class="s-title">治療<span>計畫</span>書</h2>
    <dl class="s-info">${info.map(([a,b])=>`<div><dt>${a}</dt><dd>${h(b)}</dd></div>`).join('')}</dl>
-   <section><h3 class="s-h">影像檢查</h3>${p.xray?`<div class="s-xray"><img src="${p.xray}" alt="全景 X 光"></div>`:'<div class="s-xray empty">未上傳 X 光</div>'}</section>
-   <section><h3 class="s-h">牙位圖</h3><div class="chartbox" data-v="${q.v}" style="overflow-x:auto"></div>
+   <section><h3 class="s-h">影像檢查</h3>${xrayAnn(p,q)}</section>
+   <section><h3 class="s-h">牙位圖</h3><div class="chartbox" data-v="${q.v}"></div>
     <div class="legend"><span><i style="background:var(--deep);border-color:var(--deep)"></i>本次植牙</span><span><i style="background:var(--yellow);border-color:#D9BC33"></i>牙橋假牙</span><span><i style="background:#5b6f86;border-color:#5b6f86"></i>已有植體</span><span><i style="background:#fff;border-style:dashed"></i>缺牙</span><span><i style="background:var(--skin);border-radius:50%;border-color:var(--skin)"></i>補骨／鼻竇增高</span></div></section>
+   ${photos.length?`<section><h3 class="s-h">臨床照片</h3><div class="photos">${photos.map(x=>`<img src="${x.src}" alt="臨床照片">`).join('')}</div></section>`:''}
    <section><h3 class="s-h">治療建議</h3><div class="recs">${recs.map(i=>`<div class="rec"><span class="t">${i.teeth.length?h(i.teeth.join('·')):'全口'}</span>${h(i.name)}</div>`).join('')}</div></section>
    <footer class="s-foot"><span>立威口腔顎面外科牙醫診所・治療計畫書</span><span>1 / 2</span></footer>
   </section>
   <section class="sheet">${brand}
-   <section><h3 class="s-h">治療項目與費用</h3><div class="tablewrap"><table class="fees"><thead><tr><th>牙位</th><th>項目</th><th class="r">單價</th><th class="r">數量</th><th class="r">金額</th></tr></thead><tbody>
-   ${Object.entries(groups).map(([g,list])=>`<tr class="g"><td colspan="5">${h(g)}</td></tr>`+list.map(i=>`<tr><td class="t">${i.teeth.length?h(i.teeth.join('·')):'全口'}</td><td>${h(i.name)}</td><td class="r">${i.gift?'贈送':money(i.price)+' / '+h(i.unit)}</td><td class="r">${i.qty} ${h(i.unit)}</td><td class="r"><b>${i.gift?'0':money(i.price==null?null:i.price*i.qty)}</b></td></tr>`).join('')).join('')}
-   ${c.sed?`<tr class="g"><td colspan="5">麻醉</td></tr><tr><td class="t">—</td><td colspan="3">${h(c.sedLabel)}</td><td class="r"><b>${money(c.sed)}</b></td></tr>`:''}
+   <section><h3 class="s-h">治療項目與費用 <span class="muted" style="font-family:var(--body);letter-spacing:0;font-weight:400">${rateTxt}</span></h3><div class="tablewrap"><table class="fees"><thead><tr><th>牙位</th><th>項目</th><th class="r">單價</th><th class="r">數量</th><th class="r">金額</th></tr></thead><tbody>
+   ${Object.entries(groups).map(([g,list])=>`<tr class="g"><td colspan="5">${h(g)}</td></tr>`+list.map(([i,l])=>`<tr><td class="t">${i.teeth.length?h(i.teeth.join('·')):'全口'}</td><td>${h(i.name)}</td><td class="r">${i.gift?'贈送':(i.list>i.price?`<s class="was">${money(i.list)}</s><br>`:'')+money(i.price)+' / '+h(i.unit)}</td><td class="r">${i.qty} ${h(i.unit)}</td><td class="r">${i.gift?'<b>0</b>':(i.price==null?'待補':amt(l))}</td></tr>`).join('')).join('')}
+   ${c.sedLabel?`<tr class="g"><td colspan="5">麻醉</td></tr><tr><td class="t">—</td><td colspan="3">${h(c.sedLabel)}</td><td class="r">${c.sed?amt({list:c.sed,final:c.sedFinal}):'健保'}</td></tr>`:''}
    ${q.gifts.length?`<tr class="g"><td colspan="5">贈送項目</td></tr><tr><td class="t">—</td><td colspan="3">${h(q.gifts.join('、'))}</td><td class="r">0</td></tr>`:''}
-   ${c.d95?`<tr class="minus"><td></td><td colspan="3">95 折優惠</td><td class="r"><b>−${money(c.d95)}</b></td></tr>`:''}
    ${c.dAmt?`<tr class="minus"><td></td><td colspan="3">專案優惠</td><td class="r"><b>−${money(c.dAmt)}</b></td></tr>`:''}
    ${c.mk?`<tr class="minus"><td></td><td colspan="3">${h(MKT[q.mkt].label)}${q.auth.length?'（'+h(q.auth.join('、'))+'）':''}</td><td class="r"><b>−${money(c.mk)}</b></td></tr>`:''}
    </tbody></table></div></section>
-   <div class="total"><p class="muted" style="margin:0">本報價有效至 ${h(q.until)}<br>實際費用以療程進行時之內容為準。</p><div class="sum">治療總額<strong>NT$ ${money(c.total)}</strong></div></div>
+   <div class="total"><p class="muted" style="margin:0">本報價有效至 ${h(q.until)}<br>實際費用以療程進行時之內容為準。</p>
+    <div class="sum">${c.discounted?`<span class="origsum">原價 <s>NT$ ${money(c.orig)}</s></span>折扣後總額`:'治療總額'}<strong>NT$ ${money(c.total)}</strong></div></div>
+   ${teamHTML(q)}
    ${pays.length?`<section><h3 class="s-h">付款時程</h3><ul class="pay">${pays.join('')}</ul>${c.dep?`<p class="muted" style="margin:6px 0 0">今日資料收集費合計：NT$ ${money(c.dep)}</p>`:''}</section>`:''}
    <section><h3 class="s-h">注意事項</h3><ul class="pay"><li>手術前請告知目前服用的藥物與全身病史。</li><li>安排鎮靜麻醉者，手術前 8 小時請勿進食，並請家屬陪同。</li><li>治療期間如需調整計畫，診所將另出新版計畫書供您確認。</li></ul></section>
    <section class="sign"><p>本人經醫師說明，了解並選擇上述治療方式，並已完全了解所有必須的費用。</p>
-    <div class="sign-row"><div>病人簽名${q.sign?`<img src="${q.sign}" alt="簽名">`:''}</div><div>主治醫師　${h(p.doctor)}</div><div>日期　${q.signed?h(q.signedAt):''}</div></div></section>
+    <div class="sign-row"><div>病人簽名${q.sign?`<img src="${q.sign}" alt="簽名">`:''}</div><div>主治醫師　${h(doctor||'')}</div><div>日期　${q.signed?h(q.signedAt):''}</div></div></section>
    <footer class="s-foot"><span>台北市大同區・立威口腔顎面外科牙醫診所</span><span>2 / 2</span></footer>
   </section>`;
 }
 function chartSVG(p,q){
-  const imp=new Set(),bridge=new Set(),graft={};
-  for(const i of q.items){for(const t of i.teeth){if(i.pid==='imp')imp.add(t);if(i.pid==='bridge')bridge.add(t);if(['graft','auto','bba'].includes(i.pid))graft[t]='補骨';if(i.pid==='sinus')graft[t]='鼻竇';}}
+  const st=planSets(q);const imp=st.imp,bridge=st.bridge,graft=st.graft;
   const W=t=>{const d=t%10;return d>=6?40:d>=4?33:30};
   const gap=3,total=UPPER.reduce((s,t)=>s+W(t)+gap,0)-gap,x0=(740-total)/2;
-  let svg=`<svg viewBox="0 0 740 250" style="width:100%;min-width:520px;display:block" xmlns="http://www.w3.org/2000/svg" font-family="Noto Sans TC, sans-serif">`;
-  svg+=`<rect x="${x0-6}" y="62" width="${total+12}" height="14" rx="7" fill="#F9EBDB"/><rect x="${x0-6}" y="174" width="${total+12}" height="14" rx="7" fill="#F9EBDB"/><line x1="370" y1="20" x2="370" y2="232" stroke="#EBD3BC" stroke-dasharray="3 4"/>`;
-  const row=(list,cy,dir,ly)=>{let x=x0;for(const t of list){const w=W(t),hgt=42;const st=p.teeth[t]?p.teeth[t].s:'ok';
+  let svg=`<svg viewBox="0 0 740 262" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg" font-family="Noto Sans TC, sans-serif">`;
+  svg+=`<rect x="${x0-6}" y="68" width="${total+12}" height="14" rx="7" fill="#F9EBDB"/><rect x="${x0-6}" y="180" width="${total+12}" height="14" rx="7" fill="#F9EBDB"/><line x1="370" y1="24" x2="370" y2="240" stroke="#EBD3BC" stroke-dasharray="3 4"/>`;
+  const row=(list,cy,dir,ly)=>{let x=x0;for(const t of list){const w=W(t),hgt=42;const s=p.teeth[t]?p.teeth[t].s:'ok';
     let fill='#fff',stroke='#C9B09A',dash='';
-    if(imp.has(t)){fill='#FD4F00';stroke='#FD4F00'}else if(bridge.has(t)){fill='#F7DF62';stroke='#D9BC33'}else if(st==='imp'){fill='#5b6f86';stroke='#5b6f86'}else if(st==='crown'){fill='#F2C49E';stroke='#d9a57a'}else if(st==='miss'||st==='none'){dash='4 3'}
+    if(imp.has(t)){fill='#FD4F00';stroke='#FD4F00'}else if(bridge.has(t)){fill='#F7DF62';stroke='#D9BC33'}else if(s==='imp'){fill='#5b6f86';stroke='#5b6f86'}else if(s==='crown'){fill='#F2C49E';stroke='#d9a57a'}else if(s==='miss'||s==='none'){dash='4 3'}
     if(imp.has(t)){const px=x+w/2-6,py=dir<0?cy-24:cy+hgt;svg+=`<rect x="${px}" y="${py}" width="12" height="24" rx="2" fill="#8A7362"/>`}
-    else if(!(st==='miss'||st==='none')&&!bridge.has(t)){const ry=dir<0?cy:cy+hgt;svg+=`<path d="M${x+6} ${ry} L${x+w/2} ${ry+dir*24} L${x+w-6} ${ry}" fill="#fff" stroke="#C9B09A"/>`}
-    if(st==='root'&&!imp.has(t))svg+=`<circle cx="${x+w/2}" cy="${cy+hgt/2}" r="5" fill="#a8452a"/>`;
-    svg+=`<rect x="${x}" y="${cy}" width="${w}" height="${hgt}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.3" ${dash?`stroke-dasharray="${dash}"`:''} ${st==='root'&&!imp.has(t)?'fill-opacity="0"':''}/>`;
-    if(graft[t]){const gy=dir<0?cy-36:cy+hgt+36;svg+=`<circle cx="${x+w/2}" cy="${gy}" r="12" fill="#F2C49E"/><text x="${x+w/2}" y="${gy+3.5}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#3A2A20">${graft[t]}</text>`}
-    svg+=`<text x="${x+w/2}" y="${ly}" text-anchor="middle" font-size="11.5" font-weight="${imp.has(t)||bridge.has(t)?700:400}" fill="${imp.has(t)?'#FD4F00':'#8A7362'}">${t}</text>`;
+    else if(!(s==='miss'||s==='none')&&!bridge.has(t)){const ry=dir<0?cy:cy+hgt;svg+=`<path d="M${x+6} ${ry} L${x+w/2} ${ry+dir*24} L${x+w-6} ${ry}" fill="#fff" stroke="#C9B09A"/>`}
+    if(s==='root'&&!imp.has(t))svg+=`<circle cx="${x+w/2}" cy="${cy+hgt/2}" r="6" fill="#a8452a"/>`;
+    svg+=`<rect x="${x}" y="${cy}" width="${w}" height="${hgt}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash?`stroke-dasharray="${dash}"`:''} ${s==='root'&&!imp.has(t)?'fill-opacity="0"':''}/>`;
+    if(graft[t]){const gy=dir<0?cy-38:cy+hgt+38;svg+=`<circle cx="${x+w/2}" cy="${gy}" r="15" fill="#F2C49E"/><text x="${x+w/2}" y="${gy+4.5}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3A2A20">${graft[t]}</text>`}
+    svg+=`<text x="${x+w/2}" y="${ly}" text-anchor="middle" font-size="17" font-weight="${imp.has(t)||bridge.has(t)?700:500}" fill="${imp.has(t)?'#FD4F00':'#8A7362'}">${t}</text>`;
     x+=w+gap}};
-  row(UPPER,76,-1,16);row(LOWER,132,1,244);
+  row(UPPER,82,-1,18);row(LOWER,138,1,258);
   return svg+'</svg>';
 }
 function drawChartsInPlan(){const p=P(V.pid);const q=p&&quoteOf(p,V.v);if(!q)return;document.querySelectorAll('.chartbox').forEach(b=>b.innerHTML=chartSVG(p,q))}
@@ -656,17 +759,18 @@ const act={
      <div class="row" style="margin-top:16px"><button class="btn grow" onclick="closeModal()">再檢查一下</button><button class="btn pri grow" onclick="act.confirmMark()">確認送出</button></div>`);
   },
   confirmMark(){const p=P(V.pid);for(const t of ORDER)if(!p.teeth[t])p.teeth[t]={s:'ok'};p.teethDone=true;save();closeModal();toast('牙位已確認，諮詢師可以貼醫囑');go('patient',{pid:p.id})},
-  newQuote(pid){tmp.q2=null;tmp.editV=null;go('orders',{pid})},
+  newQuote(pid){tmp.q2=null;tmp.editV=null;tmp.promo=false;go('orders',{pid})},
   parse(){
     const text=document.getElementById('ord').value;if(!text.trim())return toast('請先貼上醫囑');
     const r=parseOrders(text);
     const old=tmp.q2;
-    tmp.q2={orders:text,items:r.items,bad:r.bad,notes:r.notes,sed:old?old.sed:{type:'none',hours:2,count:1},disc:old?old.disc:'none',discAmt:old?old.discAmt:'',gifts:old?old.gifts:[],mkt:old?old.mkt:'none',mktAmt:old?old.mktAmt:'',auth:old?old.auth:[],validDays:old?old.validDays:7};
+    const rate=orderRate(text);const p0=P(V.pid);
+    tmp.q2={orders:text,items:r.items,bad:r.bad,notes:r.notes,doctor:old?old.doctor:(p0.doctor||''),date:old?old.date:today(),rate,sed:old?old.sed:{type:'none',hours:2,count:1},disc:rate?(rate===0.95?'95':rate===0.9?'90':'rate'):(old?old.disc:'none'),discAmt:old?old.discAmt:'',gifts:old?old.gifts:[],mkt:old?old.mkt:'none',mktAmt:old?old.mktAmt:'',auth:old?old.auth:[],validDays:old?old.validDays:7};
     for(const i of tmp.q2.items)if(i.pid==='ems'&&!i.gift){i.gift=true;i.price=0;i.orig=0}
     render();
   },
   itemSet(k,f,v){const i=tmp.q2.items[k];
-    if(f==='pid'){const r=priceOf(v);if(r){i.pid=r.id;i.name=r.name;i.cat=r.cat;i.unit=r.unit;i.price=r.price;i.orig=r.price;if(r.unit==='顆')i.qty=Math.max(i.teeth.length,1)}}
+    if(f==='pid'){const r=priceOf(v);if(r){i.pid=r.id;i.name=r.name;i.cat=r.cat;i.unit=r.unit;i.price=r.price;i.orig=r.price;i.list=r.price;if(r.unit==='顆')i.qty=Math.max(i.teeth.length,1)}}
     else if(f==='teeth'){i.teeth=v.split(/[^\d]+/).filter(Boolean).map(Number).filter(n=>ORDER.includes(n));if(i.unit==='顆')i.qty=Math.max(i.teeth.length,1)}
     else if(f==='qty')i.qty=Math.max(1,+v||1);
     else if(f==='price'){i.price=v===''?null:+v;if(i.orig==null)i.orig=i.price}
@@ -681,16 +785,25 @@ const act={
     if(q.items.some(i=>!i.pid))return toast('還有未辨識的項目，請先選擇或刪除');
     if(q.items.some(i=>i.orig!=null&&i.price!==i.orig&&!i.reason.trim()))return toast('改價的項目請填寫原因');
     const u=me();const log=[];
-    for(const i of q.items)if(i.orig!=null&&i.price!==i.orig)log.push(`${today()} ${u.name}：${i.name} ${money(i.orig)} → ${money(i.price)}，原因：${i.reason}`);
+    for(const i of q.items){if(i.orig!=null&&i.price!==i.orig)log.push(`${today()} ${u.name}：${i.name} ${money(i.orig)} → ${money(i.price)}，原因：${i.reason}`);
+      else if(i.list!=null&&i.price!=null&&i.list>i.price)log.push(`${today()} 醫囑折扣：${i.name} 原價 ${money(i.list)} → ${money(i.price)}`);}
+    if(q.rate&&q.disc==='rate')log.push(`${today()} 醫囑折數：${Math.round(q.rate*100)} 折`);
     let v,prevLog=[];
     if(tmp.editV){const old=quoteOf(p,tmp.editV);if(old&&!old.signed){v=old.v;prevLog=old.log;p.quotes=p.quotes.filter(x=>x!==old)}else v=p.quotes.length+1}
     else v=p.quotes.length+1;
-    const nq=Object.assign({},JSON.parse(JSON.stringify(q)),{v,date:today(),ts:Date.now(),until:addDays(q.validDays),signed:false,sign:null,log:prevLog.concat(log),by:u.name});
-    p.quotes.push(nq);p.quotes.sort((a,b)=>a.v-b.v);tmp.q2=null;tmp.editV=null;save();toast('第 '+v+' 版已儲存');go('plan',{pid:p.id,v});
+    const nq=Object.assign({},JSON.parse(JSON.stringify(q)),{v,date:q.date||today(),ts:Date.now(),until:addDays(q.validDays),signed:false,sign:null,log:prevLog.concat(log),by:u.name});
+    p.quotes.push(nq);p.quotes.sort((a,b)=>a.v-b.v);tmp.q2=null;tmp.editV=null;tmp.promo=false;save();toast('第 '+v+' 版已儲存');go('plan',{pid:p.id,v});
   },
   edit(){const p=P(V.pid);const q=quoteOf(p,V.v);const c=JSON.parse(JSON.stringify(q));
     for(const i of c.items)i.orig=i.price,i.reason='';
-    tmp.q2=c;tmp.editV=q.signed?null:q.v;if(q.signed)toast('已簽名的版本不能改，將另開第 '+(p.quotes.length+1)+' 版');go('orders',{pid:p.id})},
+    tmp.q2=c;tmp.promo=false;tmp.editV=q.signed?null:q.v;if(q.signed)toast('已簽名的版本不能改，將另開第 '+(p.quotes.length+1)+' 版');go('orders',{pid:p.id})},
+  promo(){const p=P(V.pid);const q=quoteOf(p,V.v);const c=JSON.parse(JSON.stringify(q));
+    for(const i of c.items)i.orig=i.price,i.reason='';c.date=today();
+    tmp.q2=c;tmp.editV=null;tmp.promo=true;toast('另開第 '+(p.quotes.length+1)+' 版，原本的計畫書不會變動');go('orders',{pid:p.id})},
+  addPhotos(inp){const p=P(V.pid);const fs=[...inp.files];if(!fs.length)return;p.photos=p.photos||[];
+    Promise.all(fs.map(f=>compress(f,1400,0.8))).then(ds=>{for(const d of ds)p.photos.push({id:'ph'+Date.now()+Math.random().toString(36).slice(2,6),src:d,use:true});save();toast('已加入 '+ds.length+' 張照片');render()}).catch(()=>toast('照片讀取失敗'))},
+  photoUse(id,on){const p=P(V.pid);const x=p.photos.find(y=>y.id===id);x.use=on;save()},
+  photoDel(id){const p=P(V.pid);p.photos=p.photos.filter(y=>y.id!==id);save();render()},
   signOpen(){modal(`<h2>病人簽名</h2><p class="muted">請病人在下方框內簽名。</p><canvas class="pad" id="pad"></canvas>
    <div class="row" style="margin-top:12px"><button class="btn" onclick="act.signClear()">清除</button><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.signSave()">完成簽名</button></div>`);setupPad()},
   signClear(){const c=document.getElementById('pad');c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.ink=''},
@@ -698,11 +811,11 @@ const act={
   png(){
     if(!window.html2canvas)return toast('圖片工具載入中，請稍後再試');
     toast('產生圖片中…');
-    const sheets=[...document.querySelectorAll('.sheet')];
-    Promise.all(sheets.map(s=>html2canvas(s,{scale:2,backgroundColor:'#ffffff',useCORS:true}))).then(cs=>{
+    const sheets=[...document.querySelectorAll('.sheet')];document.body.classList.add('exporting');
+    Promise.all(sheets.map(s=>html2canvas(s,{scale:2,backgroundColor:'#ffffff',useCORS:true}))).then(cs=>{document.body.classList.remove('exporting');
       const urls=cs.map(c=>c.toDataURL('image/png'));
       modal(`<h2>PNG 圖片</h2><p class="muted">手機請長按圖片儲存；電腦可點「下載」。</p>${urls.map((u,i)=>`<img src="${u}" style="width:100%;border:1px solid var(--line);margin-bottom:8px"><a class="btn sm" href="${u}" download="治療計畫書_第${V.v}版_${i+1}.png">下載第 ${i+1} 頁</a>`).join('<hr style="border:0;border-top:1px solid var(--line);margin:12px 0">')}<button class="btn block" style="margin-top:12px" onclick="closeModal()">關閉</button>`);
-    }).catch(()=>toast('圖片產生失敗，請改用 PDF'));
+    }).catch(()=>{document.body.classList.remove('exporting');toast('圖片產生失敗，請改用 PDF')});
   },
   role(acc,r){const u=S.users.find(x=>x.acc===acc);u.role=r;save();toast('已更新 '+u.name+' 的角色')},
   addPrice(){const g=id=>document.getElementById(id).value.trim();const name=g('ap-name');if(!name)return toast('請填療程名稱');
