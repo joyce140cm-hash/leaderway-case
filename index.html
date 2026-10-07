@@ -294,7 +294,7 @@ function render(){
   if(!S.me||!me()){document.body.classList.remove('authed');app.innerHTML=viewLogin();return}
   document.body.classList.add('authed');document.body.classList.remove('menu');
   const u=me();
-  const views={home:viewHome,patients:viewPatients,newp:viewNewPatient,editp:viewNewPatient,patient:viewPatient,mark:viewMark,orders:viewOrders,plan:viewPlan,settings:viewSettings,mgrs:()=>viewPeople('mgr'),cons:()=>viewPeople('consult'),handoff:viewHandoff,reports:viewReports,roster:viewRoster};
+  const views={home:viewHome,patients:viewPatients,newp:viewNewPatient,editp:viewNewPatient,patient:viewPatient,mark:viewMark,orders:viewOrders,plan:viewPlan,settings:viewSettings,mgrs:()=>viewPeople('mgr'),cons:()=>viewPeople('consult'),handoff:viewHandoff,reports:viewReports,roster:viewRoster,mkt:viewMkt};
   const body=(views[V.name]||viewHome)();
   const sec={patient:'patients',newp:'patients',editp:'patients',mark:'patients',orders:'patients',plan:'patients'};
   const cur=sec[V.name]||V.name;
@@ -302,7 +302,7 @@ function render(){
   const item=(k,label,tag)=>`<button class="${cur===k?'on':''}" onclick="go('${k}')">${label}${tag?`<span class="tag">${tag}</span>`:''}</button>`;
   app.innerHTML=`
   <aside class="side"><div class="brand"><div class="mark">立</div><b>立威個案管理</b></div>
-   ${item('home','今日待辦')}${item('patients','患者查詢')}${item('mgrs','個案管理')}${item('cons','諮詢師')}${item('handoff','待交接','第二階段')}${boss?item('reports','報表','第二階段'):''}
+   ${item('home','今日待辦')}${item('patients','患者查詢')}${item('mgrs','個案管理')}${item('cons','諮詢師')}${item('mkt','行銷 case')}${item('handoff','待交接','第二階段')}${boss?item('reports','報表','第二階段'):''}
    <div class="sec">設定</div>${item('roster','上傳班表')}${item('settings','設定')}</aside>
   <div class="scrim" onclick="document.body.classList.remove('menu')"></div>
   <div class="demo">試用版・資料只存在這支手機的瀏覽器・請勿輸入真實病人資料</div>
@@ -396,9 +396,9 @@ function rosterTodos(){
   return out;
 }
 function viewHome(){
-  const td=todo();tmp.todo=td;const rt=rosterTodos();tmp.rt=rt;
+  const td=todo();tmp.todo=td;const rt=rosterTodos().concat(mktTodos());tmp.rt=rt;
   return `<h1>今日待辦</h1>
-  ${dutyCard()}
+  ${shootCard()}${mktHomeCard()}${dutyCard()}
   ${rt.length?`<div class="card list">${rt.map((x,i)=>`<div class="it" ${x.to?`onclick="tmp.rt[${i}].to()"`:''}><div class="grow"><b>${h(x.t)}</b></div><span class="pill ${x.c}">提醒</span></div>`).join('')}</div>`:''}
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">待處理個案</h2><button class="btn pri sm" onclick="go('newp')">＋新增病人</button></div>
    <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${h(x.p.name)}</b><span class="muted">${h(x.p.chart||'病歷號待補')}・${x.p.doctor?h(x.p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${x.c}">${h(x.t)}</span></div>`).join(''):'<p class="muted">目前沒有待辦。按「＋新增病人」開始試用。</p>'}</div></div>`;
@@ -428,7 +428,11 @@ function viewRoster(){
    <label class="f" for="r-month">月份</label><select class="i" id="r-month">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===m?'selected':''}>${i+1} 月</option>`).join('')}</select>
    <label class="btn pri block" style="margin-top:12px;text-align:center" for="r-file">選擇 Excel 檔並上傳</label><input id="r-file" type="file" accept=".xlsx,.xls" hidden onchange="act.roster(this)">
    ${R?`<p class="muted" style="margin:12px 0 0">目前班表：${h(R.month)} 月（${h(R.sheet)}），${h(R.uploaded)} 由 ${h(R.by)} 上傳，共 ${Object.keys(R.days).length} 天、${R.names.length} 位人員。</p>`:''}</div>
-  <div class="card"><h2>小編班表</h2><p class="muted" style="margin:0">即將加入：讀取拍攝行程，在首頁顯示「今日有拍攝行程 🎬」。</p></div>`;
+  <div class="card"><h2>小編班表</h2>
+   <p class="muted" style="margin-top:0">上傳小編班表 Excel，系統讀取選擇月份的工作表（例如 115 年 10 月是「11510」），含拍攝的行程會顯示在首頁。</p>
+   <label class="f" for="e-month">月份</label><select class="i" id="e-month">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===m?'selected':''}>${i+1} 月</option>`).join('')}</select>
+   <label class="btn pri block" style="margin-top:12px;text-align:center" for="e-file">選擇 Excel 檔並上傳</label><input id="e-file" type="file" accept=".xlsx,.xls" hidden onchange="act.editor(this)">
+   ${S.editor?`<p class="muted" style="margin:12px 0 0">目前小編班表：${h(S.editor.month)} 月（${h(S.editor.sheet)}），${h(S.editor.uploaded)} 上傳，拍攝行程 ${Object.values(S.editor.days).reduce((n,d)=>n+d.items.filter(i=>i.shoot&&!i.cancel).length,0)} 筆。</p>`:''}</div>`;
 }
 function parseRoster(wb,m){
   const name=wb.SheetNames.find(n=>n.replace(/\s/g,'')===m+'月助理')||wb.SheetNames.find(n=>n.replace(/\s/g,'').startsWith(m+'月助理'));
@@ -449,6 +453,107 @@ function parseRoster(wb,m){
     days[cur].shifts[shv]=row;
   }
   return {sheet:name,names:names.map(x=>x.n),days};
+}
+
+/* ---- 小編班表 ---- */
+function txtOf(wb,path){const f=wb.files&&(wb.files[path]||wb.files['/'+path]);if(!f)return '';const c=f.content;return typeof c==='string'?c:new TextDecoder().decode(c instanceof Uint8Array?c:new Uint8Array(c))}
+function strikeCells(wb,sheetName){
+  const out=new Set();
+  try{
+    const wbx=txtOf(wb,'xl/workbook.xml'),rels=txtOf(wb,'xl/_rels/workbook.xml.rels'),sty=txtOf(wb,'xl/styles.xml');if(!wbx||!rels||!sty)return out;
+    const attr=(tag,n)=>{const m=tag.match(new RegExp('\\b'+n+'="([^"]*)"'));return m?m[1]:null};
+    const esc=x=>x.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const sh=(wbx.match(/<sheet\b[^>]*>/g)||[]).find(t=>attr(t,'name')===sheetName||attr(t,'name')===esc(sheetName));if(!sh)return out;
+    const rid=attr(sh,'r:id');const rel=(rels.match(/<Relationship\b[^>]*>/g)||[]).find(t=>attr(t,'Id')===rid);if(!rel)return out;
+    const sx=txtOf(wb,'xl/'+attr(rel,'Target').replace(/^\/?xl\//,'').replace(/^\//,''));if(!sx)return out;
+    const isStrike=x=>/<strike(?![^>]*val="(0|false)")[^>]*\/?>/.test(x);
+    const fontsBlk=(sty.match(/<fonts\b[\s\S]*?<\/fonts>/)||[''])[0];
+    const fonts=(fontsBlk.match(/<font\b[^>]*\/>|<font\b[^>]*>[\s\S]*?<\/font>/g)||[]).map(isStrike);
+    const xfBlk=(sty.match(/<cellXfs\b[\s\S]*?<\/cellXfs>/)||[''])[0];
+    const xfs=(xfBlk.match(/<xf\b[^>]*>/g)||[]).map(t=>!!fonts[+(attr(t,'fontId')||0)]);
+    const sst=txtOf(wb,'xl/sharedStrings.xml');
+    const ss=(sst.match(/<si>[\s\S]*?<\/si>/g)||[]).map(si=>{const rs=si.match(/<r>[\s\S]*?<\/r>/g);if(!rs)return false;let a=0,b=0;
+      for(const r of rs){const t=((r.match(/<t\b[^>]*>([\s\S]*?)<\/t>/)||[])[1]||'').trim().length;b+=t;const rp=(r.match(/<rPr>[\s\S]*?<\/rPr>/)||[''])[0];if(isStrike(rp))a+=t}return b>0&&a/b>0.5});
+    const re=/<c\b([^>]*?)(\/>|>([\s\S]*?)<\/c>)/g;let m;
+    while((m=re.exec(sx))){const at=m[1];const ref=attr(at,'r');if(!ref)continue;let st=!!xfs[+(attr(at,'s')||0)];
+      if(!st&&attr(at,'t')==='s'){const v=(m[3]||'').match(/<v>(\d+)<\/v>/);if(v&&ss[+v[1]])st=true}
+      if(st)out.add(ref)}
+  }catch(e){}
+  return out;
+}
+const SHOOT_RE=/拍|影片|case|ba照|ba 照|ba圖|錄影/i;
+const CANCEL_RE=/拒絕|取消|del\b|改期/i;
+function parseEditor(wb,y,m){
+  const roc=y-1911,name=String(roc)+String(m).padStart(2,'0');
+  const sheet=wb.SheetNames.find(n=>n.trim()===name);if(!sheet)return {err:'找不到「'+name+'」工作表'};
+  const ws=wb.Sheets[sheet];const rg=XLSX.utils.decode_range(ws['!ref']);const cell=(r,c)=>ws[XLSX.utils.encode_cell({r,c})];
+  const val=(r,c)=>{const x=cell(r,c);return x&&x.v!=null?String(x.v).trim():''};
+  const strike=strikeCells(wb,sheet);
+  let hr=-1,cols=[];
+  for(let r=0;r<=Math.min(rg.e.r,15)&&hr<0;r++){const cs=[];for(let c=0;c<=rg.e.c;c++)if(val(r,c)==='一')cs.push(c);if(cs.length){const c0=cs[0];const wk=['一','二','三','四','五','六','日'];const found=[];for(let c=c0;c<=rg.e.c&&found.length<7;c++)if(val(r,c)===wk[found.length])found.push(c);if(found.length===7){hr=r;cols=found}}}
+  if(hr<0)return {err:'看不出月曆格式（找不到星期一到日的標題列）'};
+  const weekRows=[];for(let r=hr+1;r<=rg.e.r;r++){if(cols.some(c=>{const x=cell(r,c);return x&&typeof x.v==='number'}))weekRows.push(r)}
+  const days={};let started=false,ended=false,prev=0;
+  weekRows.forEach((r,wi)=>{const end=wi+1<weekRows.length?weekRows[wi+1]:Math.min(rg.e.r+1,r+6);
+    cols.forEach((c,ci)=>{const x=cell(r,c);if(!x||typeof x.v!=='number')return;const d=x.v;
+      if(!started){if(d===1)started=true;else return}
+      if(ended)return;if(d<prev){ended=true;return}prev=d;
+      const label=val(r,c+1);const items=[];
+      for(let rr=r+1;rr<end;rr++)for(const cc of [c,c+1]){const t=val(rr,cc);if(!t)continue;const ref=XLSX.utils.encode_cell({r:rr,c:cc});
+        items.push({t,shoot:SHOOT_RE.test(t),cancel:strike.has(ref)||CANCEL_RE.test(t)})}
+      const shift=/^早?午?晚?$/.test(label)&&label?label:'';
+      days[d]={shift,label:shift?'':label,items};
+    })});
+  return {sheet,year:y,month:m,days};
+}
+function editorToday(){const E=S.editor;if(!E)return null;const d=new Date();if(+E.month!==d.getMonth()+1||+E.year!==d.getFullYear())return null;return E.days[d.getDate()]||null}
+function shootCard(){
+  const day=editorToday();if(!day)return '';
+  const sh=day.items.filter(i=>i.shoot&&!i.cancel),other=day.items.filter(i=>!i.shoot&&!i.cancel);
+  if(!sh.length&&!other.length&&!day.shift&&!day.label)return '';
+  return `<div class="card" style="${sh.length?'border-color:var(--orange);background:#FFF8EF':''}"><h2>${sh.length?'今日有拍攝行程 🎬':'今日小編行程'}</h2>
+   ${day.shift?`<p style="margin:0 0 6px"><span class="muted">小編班別</span> <b>${h(day.shift)}</b></p>`:''}${day.label?`<p style="margin:0 0 6px"><span class="pill y">${h(day.label)}</span></p>`:''}
+   ${sh.length?`<ul class="pay" style="margin:0 0 6px">${sh.map(i=>`<li><b>${h(i.t)}</b></li>`).join('')}</ul>`:''}
+   ${other.length?`<ul class="pay muted" style="margin:0">${other.map(i=>`<li>${h(i.t)}</li>`).join('')}</ul>`:''}</div>`;
+}
+/* ---- 行銷 case ---- */
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const mdOf=s=>{const [y,m,d]=s.split('-');return (+m)+'/'+(+d)};
+const WK=['日','一','二','三','四','五','六'];
+function weekRange(off){const d=new Date();const dow=(d.getDay()+6)%7;const a=new Date(d);a.setDate(d.getDate()-dow+off*7);const b=new Date(a);b.setDate(a.getDate()+6);return [iso(a),iso(b)]}
+function mktVisits(from,to){const out=[];for(const c of (S.mkt||[]))for(const v of c.visits||[])if(v.date>=from&&v.date<=to)out.push({c,v});return out.sort((a,b)=>a.v.date.localeCompare(b.v.date))}
+function mktHomeCard(){
+  const t=iso(new Date());const list=mktVisits(t,t);if(!list.length)return '';
+  return `<div class="card" style="border-color:var(--orange)"><h2>今日行銷 case 回診 📣</h2><div class="list">${list.map(({c,v})=>`<div class="it" onclick="go('mkt',{mid:'${c.id}'})"><div class="grow"><b>${h(c.name)}</b><span class="muted">${h(MKT[c.plan]?MKT[c.plan].label:'行銷案例')}${v.note?'・'+h(v.note):''}</span></div><span class="pill">回診</span></div>`).join('')}</div></div>`;
+}
+function mktTodos(){
+  const out=[];const d=new Date();
+  if([1,3,6].includes(d.getDay()))out.push({t:'今天彙整本週與下週的行銷 case 回診，點進去看',c:'y',to:()=>go('mkt')});
+  if(d.getDate()===25)out.push({t:'今天 25 日：請安排下個月的拍攝行程',c:'y',to:()=>go('mkt')});
+  return out;
+}
+function viewMkt(){
+  if(V.mid)return viewMktOne();
+  const d=new Date();const digest=[1,3,6].includes(d.getDay());
+  const [a1,b1]=weekRange(0),[a2,b2]=weekRange(1);
+  const box=(title,list)=>`<h3 style="margin:10px 0 6px;font-size:14px">${title}</h3>${list.length?`<div class="list">${list.map(({c,v})=>{const dt=new Date(v.date);return `<div class="it" onclick="go('mkt',{mid:'${c.id}'})"><div class="grow"><b>${mdOf(v.date)}（${WK[dt.getDay()]}）${h(c.name)}</b><span class="muted">${h(MKT[c.plan]?MKT[c.plan].label:'行銷案例')}${v.note?'・'+h(v.note):''}</span></div></div>`}).join('')}</div>`:'<p class="muted" style="margin:0">沒有回診。</p>'}`;
+  return `<h1>行銷 case</h1>
+  ${digest?`<div class="card" style="border-color:var(--orange)"><h2>回診彙整 <span class="pill">每週一、三、六</span></h2>${box('本週（'+mdOf(a1)+'–'+mdOf(b1)+'）',mktVisits(a1,b1))}${box('下週（'+mdOf(a2)+'–'+mdOf(b2)+'）',mktVisits(a2,b2))}</div>`:`<p class="muted">回診彙整會在每週一、三、六出現在這裡。</p>`}
+  ${d.getDate()>=25?`<div class="card"><b>提醒：</b>請安排 ${d.getMonth()===11?1:d.getMonth()+2} 月的拍攝行程。</div>`:''}
+  <div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">全部行銷案例</h2><button class="btn pri sm" onclick="act.mktNew()">＋新增</button></div>
+   <div class="list">${(S.mkt||[]).length?S.mkt.map(c=>{const nx=(c.visits||[]).filter(v=>v.date>=iso(new Date())).sort((a,b)=>a.date.localeCompare(b.date))[0];return `<div class="it" onclick="go('mkt',{mid:'${c.id}'})"><div class="grow"><b>${h(c.name)}</b><span class="muted">${h(MKT[c.plan]?MKT[c.plan].label:'未選方案')}${(c.auth||[]).length?'・'+h(c.auth.join('、')):''}</span></div><span class="pill ${nx?'':'y'}">${nx?'下次回診 '+mdOf(nx.date):'未排回診'}</span></div>`}).join(''):'<p class="muted">還沒有行銷案例。報價時選了行銷方案會自動加入，也可以按「＋新增」。</p>'}</div></div>`;
+}
+function viewMktOne(){
+  const c=(S.mkt||[]).find(x=>x.id===V.mid);if(!c)return '<p>找不到案例</p>';
+  const p=c.pid?P(c.pid):null;
+  return `<div class="row"><button class="btn sm" onclick="go('mkt')">← 行銷 case</button>${p?`<span class="grow"></span><button class="btn sm" onclick="go('patient',{pid:'${p.id}'})">病人資料夾</button>`:''}</div>
+  <h1 style="margin-top:12px">${h(c.name)}</h1>
+  <div class="card"><label class="f">方案</label><select class="i" onchange="act.mktSet('plan',this.value)">${Object.entries(MKT).filter(([k])=>k!=='none').map(([k,v])=>`<option value="${k}" ${k===c.plan?'selected':''}>${v.label}</option>`).join('')}</select>
+   <label class="f">授權範圍</label><div class="row">${['可露臉','遮眼睛','不露臉','影片','照片','Google 評論','BA 圖','廣告投放'].map(g=>`<label style="font-size:14px"><input type="checkbox" ${(c.auth||[]).includes(g)?'checked':''} onchange="act.mktAuth('${g}',this.checked)"> ${g}</label>`).join('')}</div>
+   <label class="f">備註</label><input class="i" value="${h(c.note||'')}" placeholder="例如：教學日、需遮眼睛" onchange="act.mktSet('note',this.value)"></div>
+  <div class="card"><h2>回診日</h2>
+   <div class="row"><input class="i" type="date" id="mv-date" style="width:170px"><input class="i grow" id="mv-note" placeholder="要拍什麼（例如 術後一週拍照）"><button class="btn pri" onclick="act.mktVisit()">加入</button></div>
+   <div class="list" style="margin-top:8px">${(c.visits||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(v=>`<div class="it"><div class="grow"><b>${mdOf(v.date)}（${WK[new Date(v.date).getDay()]}）</b><span class="muted">${h(v.note||'')}</span></div><button class="btn sm" onclick="act.mktVisitDel('${v.id}')">移除</button></div>`).join('')||'<p class="muted">還沒有回診日。</p>'}</div></div>`;
 }
 
 /* ---- 患者 ---- */
@@ -929,6 +1034,21 @@ const act={
     else{p.teeth[t]={s:tmp.mode,x:+x.toFixed(2),y:+y.toFixed(2)};p.stack.push(t)}
     save();render();
   },
+  editor(inp){const f=inp.files[0];if(!f)return;if(!window.XLSX)return toast('讀取工具載入中，請稍後再試');
+    const m=+document.getElementById('e-month').value;const y=new Date().getFullYear();
+    f.arrayBuffer().then(buf=>{const wb=XLSX.read(buf,{bookFiles:true});const r=parseEditor(wb,y,m);
+      if(r.err){toast(r.err);return}
+      S.editor=Object.assign(r,{uploaded:today(),by:me().name});save();toast(m+' 月小編班表已上傳');go('home')}).catch(()=>toast('Excel 讀取失敗，請確認檔案格式'))},
+  mktNew(){modal(`<h2>新增行銷案例</h2><label class="f" for="mk-name">姓名</label><input class="i" id="mk-name" list="mk-pl" placeholder="可從病人名單選"><datalist id="mk-pl">${S.patients.map(p=>`<option value="${h(p.name)}">`).join('')}</datalist>
+     <label class="f" for="mk-plan">方案</label><select class="i" id="mk-plan">${Object.entries(MKT).filter(([k])=>k!=='none').map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select>
+     <div class="row" style="margin-top:14px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.mktAdd()">新增</button></div>`)},
+  mktAdd(){const n=document.getElementById('mk-name').value.trim();if(!n)return toast('請填姓名');const p=S.patients.find(x=>x.name===n);
+    const c={id:'m'+Date.now(),pid:p?p.id:null,name:n,plan:document.getElementById('mk-plan').value,auth:[],visits:[],note:'',created:today()};
+    S.mkt=S.mkt||[];S.mkt.unshift(c);save();closeModal();go('mkt',{mid:c.id})},
+  mktSet(k,v){const c=S.mkt.find(x=>x.id===V.mid);c[k]=v;save()},
+  mktAuth(g,on){const c=S.mkt.find(x=>x.id===V.mid);c.auth=c.auth||[];if(on&&!c.auth.includes(g))c.auth.push(g);if(!on)c.auth=c.auth.filter(x=>x!==g);save()},
+  mktVisit(){const d=document.getElementById('mv-date').value;if(!d)return toast('請選回診日');const c=S.mkt.find(x=>x.id===V.mid);c.visits=c.visits||[];c.visits.push({id:'v'+Date.now(),date:d,note:document.getElementById('mv-note').value.trim()});save();toast('已加入回診日');render()},
+  mktVisitDel(id){const c=S.mkt.find(x=>x.id===V.mid);c.visits=c.visits.filter(v=>v.id!==id);save();render()},
   clearAll(){modal(`<h2>確定清除全部牙位標記？</h2><p class="muted">32 顆的狀態和 X 光上的位置都會清空，從 18 號重新開始。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doClear()">確定清除</button></div>`)},
   doClear(){const p=P(V.pid);p.teeth={};p.stack=[];p.teethDone=false;tmp.sel=null;tmp.relocate=null;save();closeModal();toast('已清除，請從 18 號重新開始');render()},
   roster(inp){const f=inp.files[0];if(!f)return;if(!window.XLSX)return toast('讀取工具載入中，請稍後再試');
@@ -982,7 +1102,8 @@ const act={
     if(tmp.editV){const old=quoteOf(p,tmp.editV);if(old&&!old.signed){v=old.v;prevLog=old.log;p.quotes=p.quotes.filter(x=>x!==old)}else v=p.quotes.length+1}
     else v=p.quotes.length+1;
     const nq=Object.assign({},JSON.parse(JSON.stringify(q)),{v,date:q.date||today(),ts:Date.now(),until:addDays(q.validDays),signed:false,sign:null,log:prevLog.concat(log),by:u.name});
-    p.quotes.push(nq);p.quotes.sort((a,b)=>a.v-b.v);tmp.q2=null;tmp.editV=null;tmp.promo=false;save();toast('第 '+v+' 版已儲存');go('plan',{pid:p.id,v});
+    p.quotes.push(nq);p.quotes.sort((a,b)=>a.v-b.v);
+    if(nq.mkt&&nq.mkt!=='none'){S.mkt=S.mkt||[];let mc=S.mkt.find(x=>x.pid===p.id);if(!mc){mc={id:'m'+Date.now(),pid:p.id,name:p.name,plan:nq.mkt,auth:nq.auth.slice(),visits:[],note:'',created:today()};S.mkt.unshift(mc);toast('已加入行銷 case')}else{mc.plan=nq.mkt;mc.auth=nq.auth.slice()}}tmp.q2=null;tmp.editV=null;tmp.promo=false;save();toast('第 '+v+' 版已儲存');go('plan',{pid:p.id,v});
   },
   edit(){const p=P(V.pid);const q=quoteOf(p,V.v);const c=JSON.parse(JSON.stringify(q));
     for(const i of c.items)i.orig=i.price,i.reason='';
