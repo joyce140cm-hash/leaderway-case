@@ -385,7 +385,7 @@ function dutyCard(){
    ${day.note?`<p style="margin:0 0 8px"><span class="pill y">${h(day.note)}</span></p>`:''}
    ${ao4?`<p style="margin:0 0 8px"><b>AO4 日・護理師陳芸</b>：${nurse.length?'值班時段 '+nurse.join('、'):'班表上沒有排班，請確認'}</p>`:''}
    <p style="margin:0 0 8px"><span class="muted">今日醫師</span><br>${allDocs.size?[...allDocs].map(h).join('、'):'—'}</p>
-   <div class="duty-shifts">${['早','午','晚'].map(sh=>`<div><b>${sh}診</b>主管：${j(d[sh].sup)}<br>諮詢師：${j(d[sh].con)}<br>流動：${j(d[sh].flow)}<br>櫃檯：${j(d[sh].front)}${d[sh].off.length?`<br><span class="muted">特休：${j(d[sh].off)}</span>`:''}</div>`).join('')}</div></div>`;
+   <div class="duty-shifts">${['早','午','晚'].map(sh=>`<div><b>${sh}診</b>主管：${j(d[sh].sup)}<br>個管（諮詢）：${j(d[sh].con)}<br>流動：${j(d[sh].flow)}<br>櫃檯：${j(d[sh].front)}${d[sh].off.length?`<br><span class="muted">特休：${j(d[sh].off)}</span>`:''}</div>`).join('')}</div></div>`;
 }
 function rosterTodos(){
   const out=[];const u=me();
