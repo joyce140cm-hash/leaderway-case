@@ -219,7 +219,7 @@ const ST={
   root:{label:'殘根',key:'5',bg:'#a8452a',fg:'#fff',stroke:'#a8452a'},
   none:{label:'跳過',key:' ',bg:'#e9e2db',fg:'#8A7362',stroke:'#cfc3b8',dash:true}
 };
-const CATS=['牙周','植牙','全口重建','成人矯正','兒童矯正','TMJ','贗復','口外','兒童牙科','健保'];
+const CATS=['牙周','植牙','全口重建','成人矯正','兒童矯正','TMJ','贗復','口外','兒童牙科','健保','檢查'];
 const DEFAULT_PRICES=[
  {id:'imp',name:'植牙',cat:'植牙',unit:'顆',price:110000,front:120000,min:110000,max:120000,alias:['植牙','植體','implant','imp'],dep:10000,pay:'資料收集 $10,000／顆 → 手術日 $50,000／顆 → 植牙印模尾款繳清'},
  {id:'ext',name:'拔牙（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['拔牙','拔除','拔','ext'],pay:''},
@@ -230,6 +230,48 @@ const DEFAULT_PRICES=[
  {id:'pp',name:'乳牙活髓／根管（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['pp','ppt','活髓'],pay:''},
  {id:'seal',name:'窩溝封填（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['seal','窩溝封填'],pay:''},
  {id:'srp',name:'牙根整平（健保）',cat:'健保',nhi:true,unit:'區',price:0,min:0,max:0,alias:['srp','牙根整平'],pay:''},
+ {id:'exam',name:'口腔檢查（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['口腔檢查','exam'],pay:''},
+ {id:'wisdom',name:'智齒拔除（阻生齒手術）（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['智齒','阻生齒','3rd'],pay:''},
+ {id:'id',name:'切開引流（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['切開引流','i&d'],pay:''},
+ {id:'perioer',name:'牙周病緊急處置（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['牙周緊急','牙周病緊急'],pay:''},
+ {id:'flap',name:'牙周翻瓣手術（健保）',cat:'健保',nhi:true,unit:'區',price:0,min:0,max:0,alias:['翻瓣','flap'],pay:''},
+ {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],pay:''},
+ {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],pay:''},
+ {id:'fluor',name:'全口塗氟',cat:'兒童牙科',unit:'次',price:1000,min:1000,max:1000,alias:['塗氟','fluoride','tfa'],pay:''},
+ {id:'kidcrown',name:'乳牙樹脂冠',cat:'兒童牙科',unit:'顆',price:null,min:null,max:null,alias:['乳牙樹脂冠','樹脂冠'],pay:''},
+ {id:'space',name:'空間維持器',cat:'兒童牙科',unit:'個',price:null,min:null,max:null,alias:['空間維持器'],pay:''},
+ {id:'zygoma',name:'顴骨植體',cat:'植牙',unit:'支',price:null,min:null,max:null,alias:['顴骨','zygoma'],dep:10000,pay:''},
+ {id:'allon6',name:'All-on-6',cat:'全口重建',unit:'顎',price:null,min:null,max:null,alias:['ao6','all-on-6','all on 6','allon6'],dep:50000,pay:''},
+ {id:'overd',name:'植體支撐活動假牙',cat:'全口重建',unit:'顎',price:null,min:null,max:null,alias:['overdenture','覆蓋假牙','植體支撐'],pay:''},
+ {id:'temprpd',name:'臨時活動假牙',cat:'贗復',unit:'顎',price:18000,min:18000,max:25000,alias:['臨時活動假牙'],pay:'取初模收集資料 $5,000 → 正式印模 $10,000 → 定高度試戴 $10,000'},
+ {id:'prf',name:'生長因子 PRF／CGF',cat:'植牙',unit:'次',price:null,min:null,max:null,alias:['prf','cgf','生長因子'],pay:''},
+ {id:'periimp',name:'植體周圍炎治療',cat:'植牙',unit:'顆',price:null,min:null,max:null,alias:['植體周圍炎','peri-implantitis'],pay:''},
+ {id:'orthog',name:'正顎手術',cat:'口外',unit:'次',price:null,min:null,max:null,alias:['正顎','orthognathic'],pay:''},
+ {id:'alveo',name:'齒槽骨整形',cat:'口外',unit:'區',price:null,min:null,max:null,alias:['齒槽骨整形','骨整形','alveoloplasty'],pay:''},
+ {id:'gingiva',name:'美學牙齦整形',cat:'牙周',unit:'區',price:null,min:null,max:null,alias:['牙齦整形','美學牙齦'],dep:5000,pay:''},
+ {id:'tempcr',name:'臨時假牙',cat:'贗復',unit:'顆',price:5000,min:5000,max:5000,alias:['臨時假牙','temp'],pay:'如因長療程所需，不可折抵正式假牙'},
+ {id:'post',name:'牙釘（樁柱）',cat:'贗復',unit:'顆',price:3000,min:3000,max:3000,alias:['牙釘','post','樁柱'],pay:'有使用才會收費'},
+ {id:'apico',name:'根尖手術',cat:'贗復',unit:'顆',price:null,min:null,max:null,alias:['根尖手術','apico','apicoectomy'],pay:''},
+ {id:'vpt',name:'活髓治療',cat:'贗復',unit:'顆',price:null,min:null,max:null,alias:['活髓治療','vpt','活隨'],pay:''},
+ {id:'bleach',name:'冷光美白',cat:'贗復',unit:'次',price:null,min:null,max:null,alias:['冷光美白','冷光'],pay:''},
+ {id:'homebl',name:'居家美白',cat:'贗復',unit:'組',price:null,min:null,max:null,alias:['居家美白'],pay:''},
+ {id:'resin',name:'美學樹脂填補',cat:'贗復',unit:'顆',price:null,min:null,max:null,alias:['美學樹脂','樹脂貼片'],pay:''},
+ {id:'orthotrad',name:'傳統矯正',cat:'成人矯正',unit:'次',price:120000,min:120000,max:150000,alias:['傳統矯正'],dep:3000,pay:'資料收集 $3,000（可抵矯正費）・頭期與分期依醫師而定'},
+ {id:'orthodamon',name:'戴蒙矯正',cat:'成人矯正',unit:'次',price:150000,min:150000,max:180000,alias:['戴蒙','damon'],dep:3000,pay:'資料收集 $3,000（可抵矯正費）・頭期 $50,000，每月分期依醫師而定'},
+ {id:'orthoinv',name:'隱適美',cat:'成人矯正',unit:'次',price:220000,min:220000,max:270000,alias:['隱適美','inv','invisalign'],dep:3000,pay:'資料收集 $3,000（可抵矯正費）・頭期依醫師而定，可分 3 次繳納'},
+ {id:'orthopart',name:'局部矯正',cat:'成人矯正',unit:'次',price:null,min:null,max:null,alias:['局部矯正'],dep:3000,pay:''},
+ {id:'tad',name:'迷你骨釘',cat:'成人矯正',unit:'支',price:null,min:null,max:null,alias:['骨釘','tad'],pay:''},
+ {id:'retainer',name:'維持器',cat:'成人矯正',unit:'副',price:null,min:null,max:null,alias:['維持器','retainer'],pay:''},
+ {id:'kidmyo',name:'肌功能矯正',cat:'兒童矯正',unit:'次',price:30000,min:30000,max:45000,alias:['肌功能'],pay:'頭款 $15,000 → 每月分期 $10,000'},
+ {id:'kidexp',name:'牙弓擴張器',cat:'兒童矯正',unit:'次',price:25000,min:25000,max:50000,alias:['擴張器','擴弓'],pay:'頭款 $15,000 → 每月分期 $5,000'},
+ {id:'kidtrad',name:'兒童傳統矯正',cat:'兒童矯正',unit:'次',price:40000,min:40000,max:80000,alias:['兒童傳統矯正','兒童矯正'],pay:'頭款 $20,000 → 每月分期 $5,000／$10,000'},
+ {id:'kidinv',name:'兒童隱適美',cat:'兒童矯正',unit:'次',price:140000,min:140000,max:180000,alias:['兒童隱適美'],pay:'頭款 $60,000（口掃 $30,000、拿第一副牙套 $30,000）→ 每月分期 $5,000／$10,000'},
+ {id:'biteplane',name:'咬合斜板',cat:'兒童矯正',unit:'副',price:8000,min:8000,max:8000,alias:['咬合斜板','斜板'],pay:'一次付清'},
+ {id:'splinth',name:'咬合板（硬式）',cat:'TMJ',unit:'副',price:null,min:null,max:null,alias:['硬式咬合板','咬合板','splint'],pay:''},
+ {id:'splints',name:'咬合板（軟式）',cat:'TMJ',unit:'副',price:null,min:null,max:null,alias:['軟式咬合板'],pay:''},
+ {id:'tmjha',name:'關節玻尿酸沖洗／注射（一側）',cat:'TMJ',unit:'側',price:null,min:null,max:null,alias:['玻尿酸','關節沖洗'],pay:''},
+ {id:'botox',name:'肉毒桿菌注射（顳顎、磨牙）',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['肉毒','botox'],pay:''},
+ {id:'snore',name:'止鼾牙套',cat:'TMJ',unit:'副',price:null,min:null,max:null,alias:['止鼾'],pay:''},
  {id:'ssc',name:'兒童不鏽鋼牙冠 SSC',cat:'兒童牙科',unit:'顆',price:5000,min:5000,max:5000,alias:['ssc','不鏽鋼牙冠'],pay:''},
  {id:'col',name:'拔牙加放膠原蛋白',cat:'口外',unit:'顆',price:5000,min:5000,max:5000,alias:['膠原蛋白','膠原','膠球'],pay:''},
  {id:'auto',name:'自體骨移植',cat:'植牙',unit:'區',price:50000,min:50000,max:50000,alias:['自體骨','自體補骨'],dep:5000,pay:'資料收集 $5,000／顆 → 手術日尾款繳清'},
@@ -249,9 +291,35 @@ const DEFAULT_PRICES=[
  {id:'cl',name:'牙冠增長術',cat:'牙周',unit:'顆',price:8000,min:8000,max:20000,alias:['牙冠增長','clp'],dep:5000,pay:'資料收集 $5,000／顆 → 手術日尾款繳清'},
  {id:'micro',name:'顯微根管',cat:'贗復',unit:'顆',price:12000,min:12000,max:40000,alias:['顯微根管','micro','顯微'],dep:5000,pay:'資料收集 $5,000 → 第一次顯微根管治療尾款結清'},
  {id:'ems',name:'全口 EMS 清潔',cat:'牙周',unit:'次',price:null,min:null,max:null,alias:['ems','噴砂'],pay:''},
- {id:'ortho',name:'成人矯正',cat:'成人矯正',unit:'次',price:120000,min:120000,max:270000,alias:['矯正','inv','隱適美','戴蒙'],dep:3000,pay:'資料收集 $3,000（可抵矯正費）'},
- {id:'tmj',name:'顳顎關節治療',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['tmj','顳顎','咬合板','splint'],pay:''}
+ {id:'ortho',name:'成人矯正（待選款式）',cat:'成人矯正',unit:'次',price:120000,min:120000,max:270000,alias:['成人矯正','矯正'],dep:3000,pay:'資料收集 $3,000（可抵矯正費）'},
+ {id:'tmj',name:'顳顎關節治療',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['tmj','顳顎'],pay:''}
 ];
+const APP_VER='10/08 02:40';
+const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap'];
+const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
+const EXAMS=[
+ {id:'pano',name:'平面 X 光（Pano）',type:'nhi'},{id:'pa',name:'根尖片（PA）',type:'nhi'},
+ {id:'ct',name:'電腦斷層 CT',type:'gift'},{id:'ceph',name:'側顱、正顱',type:'data'},
+ {id:'face5d',name:'5D 臉部掃描',type:'data'},{id:'ioscan',name:'口掃',type:'data'},
+ {id:'extra',name:'口外照',type:'data'},{id:'intra',name:'口內照',type:'data'}];
+const EXAM_TAG={nhi:'健保',gift:'自費・本院贈送',data:'含在資料收集費'};
+function autoExams(q,text){
+  const ids=new Set(q.items.map(i=>i.pid));const ex=new Set(['pano']);
+  const anyDep=q.items.some(i=>{const r=priceOf(i.pid);return r&&r.dep&&!i.gift});
+  if([...ids].some(x=>SURG.includes(x)))ex.add('ct');
+  if([...ids].some(x=>/^ortho|^kid/.test(x)||x==='orthog'||x==='ortho'))ex.add('ceph');
+  if(q.items.some(i=>FRONT_ITEMS.includes(i.pid)&&i.teeth.some(isFront)))ex.add('face5d');
+  if(anyDep||ex.has('ct')){ex.add('ioscan');ex.add('intra');ex.add('extra')}
+  const t=(text||'').toLowerCase();
+  if(/\bct\b|斷層|cbct/.test(t))ex.add('ct');if(/\bpa\b|根尖片/.test(t))ex.add('pa');if(/口掃/.test(t))ex.add('ioscan');if(/5d|臉掃/.test(t))ex.add('face5d');if(/ceph|側顱|正顱/.test(t))ex.add('ceph');
+  return EXAMS.filter(e=>ex.has(e.id)).map(e=>e.id);
+}
+function fluorNHI(p){
+  if(p.nhiSpecial){const a=ageOf(p.chart);return a==null||a<12}
+  const m=/^(\d{3})(\d{2})(\d{2})/.exec(p.chart||'');if(!m)return false;
+  const y=1911+ +m[1],mo=+m[2],d=+m[3];const a=ageOf(p.chart);if(a>=65)return true;
+  const entry=(mo<9||(mo===9&&d===1))?y+6:y+7;return new Date()<=new Date(entry,7,31,23,59);
+}
 const GIFTS=['每次定檢塗氟','維持器乙副','美白噴砂','居家美白','冷光美白','EMS 清潔乙次'];
 const SED={
   none:{label:'不需要'},
@@ -267,7 +335,7 @@ const MKT={none:{label:'無',off:0},teach:{label:'AO4 教學專案',off:50000},m
 let S=load();
 (function migrate(){const ids=new Set();for(const d of DEFAULT_PRICES){ids.add(d.id);const e=S.prices.find(x=>x.id===d.id);
   if(!e){S.prices.push(JSON.parse(JSON.stringify(d)));continue}
-  e.alias=[...new Set(d.alias.concat((e.alias||[]).filter(a=>!(d.id==='micro'&&a==='根管'))))];if(d.nhi){e.nhi=true;e.cat=d.cat;e.name=d.name}}
+  e.alias=d.alias.slice();e.cat=d.cat;e.name=d.name;if(d.nhi)e.nhi=true;if(d.pay&&!e.pay)e.pay=d.pay;if(d.dep&&!e.dep)e.dep=d.dep}
   S.itemImgs=S.itemImgs||{};})();
 let V={name:'login'};
 let tmp={};
@@ -303,7 +371,7 @@ function render(){
   app.innerHTML=`
   <aside class="side"><div class="brand"><div class="mark">立</div><b>立威個案管理</b></div>
    ${item('home','今日待辦')}${item('patients','患者查詢')}${item('mgrs','個案管理')}${item('cons','諮詢師')}${item('mkt','行銷 case')}${item('handoff','待交接','第二階段')}${boss?item('reports','報表','第二階段'):''}
-   <div class="sec">設定</div>${item('roster','上傳班表')}${item('settings','設定')}</aside>
+   <div class="sec">設定</div>${item('roster','上傳班表')}${item('settings','設定')}<p class="muted" style="padding:14px 12px 0;margin:0;font-size:11px">版本：${APP_VER}</p></aside>
   <div class="scrim" onclick="document.body.classList.remove('menu')"></div>
   <div class="demo">試用版・資料只存在這支手機的瀏覽器・請勿輸入真實病人資料</div>
   <header class="top"><button class="hamb" aria-label="選單" onclick="document.body.classList.add('menu')">☰</button><b>立威個案管理</b>
@@ -582,6 +650,7 @@ function viewNewPatient(){
    <div class="row"><div class="grow"><label class="f" for="np-con">諮詢師</label><select class="i" id="np-con">${opt(CONSULT,p?p.consult:'')}</select></div>
    <div class="grow"><label class="f" for="np-mgr">個案管理師</label><select class="i" id="np-mgr">${opt(CONSULT,p?p.mgr:'')}</select></div></div>
    <label class="f" for="np-src">患者來源</label><select class="i" id="np-src">${opt(['原患者','FB','IG','Google','官網','同業介紹','親友介紹','患者介紹','其他'],p?p.src:'')}</select>
+   <label style="display:block;margin-top:10px;font-size:14px"><input type="checkbox" id="np-nhis" ${p&&p.nhiSpecial?'checked':''}> 符合健保特殊族群（低收入戶、身心障礙、原住民族地區、偏遠離島，未滿 12 歲每 3 個月可塗氟）</label>
    <label class="f">全景 X 光</label>
    <div class="row"><label class="btn" for="np-x">上傳照片</label><input id="np-x" type="file" accept="image/*" hidden onchange="act.pickX(this)"><button class="btn" onclick="act.sampleX()">使用範例 X 光</button></div>
    <div id="np-prev" style="margin-top:10px">${tmp.x?`<img src="${tmp.x}" style="width:100%;border-radius:8px">`:''}</div>
@@ -773,6 +842,10 @@ function viewOrders(){
    <td><input type="number" value="${i.price??''}" placeholder="待補" onchange="act.itemSet(${k},'price',this.value)">${i.orig!==i.price&&i.orig!=null?`<input value="${h(i.reason)}" placeholder="改價原因（必填）" onchange="act.itemSet(${k},'reason',this.value)" style="margin-top:4px;border-color:var(--deep)">`:''}</td>
    <td><button class="btn sm" onclick="act.itemDel(${k})">刪</button></td></tr>`).join('')}
    </tbody></table></div><button class="btn sm" style="margin-top:8px" onclick="act.itemAdd()">＋新增項目</button></div>
+  <div class="card"><h2>檢查與資料收集</h2>
+   <div class="row">${EXAMS.map(e=>`<label style="font-size:14px"><input type="checkbox" ${(q.exams||[]).includes(e.id)?'checked':''} onchange="act.exam('${e.id}',this.checked)"> ${e.name}<span class="muted">（${EXAM_TAG[e.type]}）</span></label>`).join('')}</div>
+   <label style="display:block;margin-top:10px;font-size:14px"><input type="checkbox" ${q.depWaive?'checked':''} onchange="tmp.q2.depWaive=this.checked;render()"> 本次資料收集不收費（老病人或折扣）</label>
+   <p class="muted" style="margin:6px 0 0">資料收集費：NT$ ${money(c.dep)}${q.depWaive?'（本次免收）':'，開始治療時可扣抵'}</p></div>
   <div class="card"><h2>麻醉</h2>
    <div class="row"><div class="grow"><label class="f">類型${child?'（兒童）':''}</label><select class="i" onchange="tmp.q2.sed.type=this.value;render()">${opt(SED,q.sed.type)}</select></div>
    ${q.sed.type!=='none'&&q.sed.type!=='local'?`<div style="width:120px"><label class="f">預計時間</label><select class="i" onchange="tmp.q2.sed.hours=(+this.value)/60;render()">${mins.map(m=>`<option value="${m}" ${Math.round((+q.sed.hours||0)*60)===m?'selected':''}>${minsLabel(m)}</option>`).join('')}</select></div>
@@ -901,6 +974,13 @@ function equipHTML(eq,brand,np){
    <footer class="s-foot"><span>立威口腔顎面外科牙醫診所・治療計畫書</span><span>3 / ${np}</span></footer>
   </section>`;
 }
+function examHTML(q,c){
+  const ex=EXAMS.filter(e=>(q.exams||[]).includes(e.id));if(!ex.length&&!c.dep)return '';
+  return `<section><h3 class="s-h">檢查與資料收集</h3>
+   <div class="recs">${ex.map(e=>`<div class="rec"><span class="t" style="color:${e.type==='nhi'?'var(--good)':e.type==='gift'?'var(--deep)':'var(--muted)'}">${EXAM_TAG[e.type]}</span>${h(e.name)}</div>`).join('')}</div>
+   ${c.dep?`<p style="margin:10px 0 0">資料收集費：${q.depWaive?`<s class="was">NT$ ${money(c.dep)}</s> <b style="color:var(--good)">本次免收</b>`:`<b>NT$ ${money(c.dep)}</b>，開始治療時可扣抵`}</p>`:''}
+   <p class="muted" style="margin:6px 0 0">這些資料讓醫師精準評估骨量、咬合與美觀，並完成數位化治療設計。</p></section>`;
+}
 function teamHTML(q){
   const t=q.sed.type;if(!['seda','ao4seda','ga','ao4ga'].includes(t))return '';
   const ga=t==='ga'||t==='ao4ga';
@@ -945,6 +1025,7 @@ function planHTML(p,q){
    </tbody></table></div></section>
    <div class="total"><p class="muted" style="margin:0">本報價有效至 ${h(q.until)}<br>實際費用以療程進行時之內容為準。</p>
     <div class="sum">${c.discounted?`<span class="origsum">原價 <s>NT$ ${money(c.orig)}</s></span>折扣後總額`:'治療總額'}<strong>NT$ ${money(c.total)}</strong></div></div>
+   ${examHTML(q,c)}
    ${teamHTML(q)}
    ${pays.length?`<section><h3 class="s-h">付款時程</h3><ul class="pay">${pays.join('')}</ul>${c.dep?`<p class="muted" style="margin:6px 0 0">今日資料收集費合計：NT$ ${money(c.dep)}</p>`:''}</section>`:''}
    <section><h3 class="s-h">注意事項</h3><ul class="pay"><li>手術前請告知目前服用的藥物與全身病史。</li><li>安排鎮靜麻醉者，手術前 8 小時請勿進食，並請家屬陪同。</li><li>治療期間如需調整計畫，診所將另出新版計畫書供您確認。</li></ul></section>
@@ -1017,7 +1098,7 @@ const act={
     if(!name)return toast('請填姓名');
     if(chart){const ex=S.patients.find(p=>p.chart===chart);
       if(ex){toast('已有這位病人，直接打開資料夾');tmp={};return go('patient',{pid:ex.id})}}
-    const p={id:'p'+(S.seq++),name,chart,job:g('np-job'),area:g('np-area'),doctor:g('np-doc'),consult:g('np-con'),mgr:g('np-mgr'),src:g('np-src'),xray:tmp.x||null,teeth:{},stack:[],teethDone:false,quotes:[],created:today()};
+    const p={id:'p'+(S.seq++),name,chart,job:g('np-job'),area:g('np-area'),doctor:g('np-doc'),consult:g('np-con'),mgr:g('np-mgr'),src:g('np-src'),nhiSpecial:document.getElementById('np-nhis').checked,xray:tmp.x||null,teeth:{},stack:[],teethDone:false,quotes:[],created:today()};
     S.patients.unshift(p);tmp={};save();go('mark',{pid:p.id});
   },
   updatePatient(){
@@ -1025,6 +1106,7 @@ const act={
     const name=g('np-name'),chart=g('np-chart');
     if(!name)return toast('請填姓名');
     if(chart&&S.patients.some(x=>x!==p&&x.chart===chart))return toast('這個病歷號已經有其他病人使用');
+    p.nhiSpecial=document.getElementById('np-nhis').checked;
     Object.assign(p,{name,chart,job:g('np-job'),area:g('np-area'),doctor:g('np-doc'),consult:g('np-con'),mgr:g('np-mgr'),src:g('np-src'),xray:tmp.x||null});
     tmp={};save();toast('資料已儲存');go('patient',{pid:p.id});
   },
@@ -1075,6 +1157,8 @@ const act={
     const rate=orderRate(text);const p0=P(V.pid);
     tmp.q2={orders:text,items:r.items,bad:r.bad,notes:r.notes,doctor:old?old.doctor:(p0.doctor||''),date:old?old.date:today(),rate,sed:old?old.sed:{type:'none',hours:2,count:1},disc:rate?(rate===0.95?'95':rate===0.9?'90':'rate'):(old?old.disc:'none'),discAmt:old?old.discAmt:'',gifts:old?old.gifts:[],mkt:old?old.mkt:'none',mktAmt:old?old.mktAmt:'',auth:old?old.auth:[],validDays:old?old.validDays:7};
     for(const i of tmp.q2.items)if(i.pid==='ems'&&!i.gift){i.gift=true;i.price=0;i.orig=0}
+    for(const i of tmp.q2.items)if(i.pid==='fluor'&&fluorNHI(p0)){i.nhi=true;i.price=0;i.orig=0;i.list=0;i.name='全口塗氟（健保）'}
+    tmp.q2.exams=autoExams(tmp.q2,text);tmp.q2.depWaive=old?!!old.depWaive:false;
     if(!old||old.sed.type==='none'){const ao=/ao4|all-?on-?4/i.test(text);
       if(/全麻|全身麻醉/.test(text))tmp.q2.sed.type=ao?'ao4ga':'ga';else if(/tci|舒眠|鎮靜/i.test(text))tmp.q2.sed.type=ao?'ao4seda':'seda';}
     render();
@@ -1088,6 +1172,7 @@ const act={
     render()},
   itemDel(k){tmp.q2.items.splice(k,1);render()},
   itemAdd(){tmp.q2.items.push({pid:null,name:'新項目',cat:'',unit:'次',teeth:[],qty:1,price:null,orig:null,reason:'',gift:false,auto:''});render()},
+  exam(id,on){const a=tmp.q2.exams=tmp.q2.exams||[];if(on&&!a.includes(id))a.push(id);if(!on)tmp.q2.exams=a.filter(x=>x!==id)},
   gift(g,on){const a=tmp.q2.gifts;if(on&&!a.includes(g))a.push(g);if(!on)a.splice(a.indexOf(g),1)},
   auth(g,on){const a=tmp.q2.auth;if(on&&!a.includes(g))a.push(g);if(!on)a.splice(a.indexOf(g),1)},
   saveQuote(){
