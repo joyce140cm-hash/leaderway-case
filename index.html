@@ -126,7 +126,7 @@ details.sec[open]>summary{margin-bottom:10px}
 .pe-img{position:relative;display:inline-block}.pe-img img{height:56px;border-radius:4px;display:block}.pe-img a{position:absolute;top:-6px;right:-6px;background:var(--ink);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:grid;place-items:center;text-decoration:none}
 .ps-top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid var(--orange);padding-bottom:10px}
 .ps-cat h3{background:var(--deep);color:#fff;font-family:var(--display);letter-spacing:.12em;margin:0 0 6px;padding:6px 12px;font-size:16px}
-.ps-t{width:100%;border-collapse:collapse;font-size:12.5px}.ps-t th{background:#E8E3DE;color:var(--muted);font-weight:500;text-align:left;padding:4px 8px}.ps-t td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}.ps-t td:first-child{width:30%}.ps-t .r{text-align:right;white-space:nowrap}
+.ps-t{width:100%;border-collapse:collapse;font-size:12.5px}.ps-t th{background:#E8E3DE;color:var(--muted);font-weight:500;text-align:left;padding:4px 8px}.ps-t td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}.ps-t td:first-child{width:30%}.ps-t .r{text-align:right;white-space:nowrap}.ps-img{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.ps-img img{height:86px;max-width:150px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
 .syncdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#bbb;vertical-align:middle;margin-right:4px}.syncdot.ok{background:var(--good)}.syncdot.busy{background:#E8B400}.syncdot.bad{background:var(--bad)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px}
 .tile{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px}
@@ -366,7 +366,7 @@ const DEFAULT_PRICES=[
  {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
  {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
 ];
-const APP_VER='10/08 19:30';
+const APP_VER='10/08 20:00';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -431,7 +431,7 @@ const isLower=t=>Math.floor(t/10)>=3;
 const priceOf=id=>S.prices.find(x=>x.id===id);
 /* ===== Google 雲端同步 ===== */
 const SYNC_KEY='lw-sync',SHADOW_KEY='lw-shadow';
-const KV_KEYS=['users','mkt','prices','priceBase','priceDate','priceBy','priceApprover','priceDraft','priceVersions','itemImgs','roster','editor','trash','delLog'];
+const KV_KEYS=['users','mkt','prices','priceFile','priceBase','priceDate','priceBy','priceApprover','priceDraft','priceVersions','itemImgs','roster','editor','trash','delLog'];
 const MERGE_KEYS={users:'acc',delLog:'at',trash:'id'};
 let SY=(()=>{try{return JSON.parse(localStorage.getItem(SYNC_KEY))||{}}catch(e){return {}}})();
 let SHADOW=(()=>{try{return JSON.parse(localStorage.getItem(SHADOW_KEY))||{}}catch(e){return {}}})();
@@ -450,7 +450,7 @@ async function api(body){
 }
 function recs(){const out=S.patients.map(p=>({col:'p',id:p.id,obj:p,name:p.name}));for(const k of KV_KEYS)if(S[k]!==undefined)out.push({col:'kv',id:k,obj:S[k],name:k});return out}
 async function uploadImgs(obj,name){
-  const todo=[];(function walk(o){if(!o||typeof o!=='object')return;for(const k of Object.keys(o)){const v=o[k];if(typeof v==='string'&&v.startsWith('data:image')&&v.length>500)todo.push([o,k]);else if(v&&typeof v==='object')walk(v)}})(obj);
+  const todo=[];(function walk(o){if(!o||typeof o!=='object')return;for(const k of Object.keys(o)){const v=o[k];if(typeof v==='string'&&/^data:(image\/|application\/pdf)/.test(v)&&v.length>500)todo.push([o,k]);else if(v&&typeof v==='object')walk(v)}})(obj);
   for(const [o,k] of todo){const d=o[k];const r=await api({action:'img',data:d,name:`${name}_${k}_${today()}`});IMGC[r.id]=d;o[k]='img:'+r.id}
   return todo.length;
 }
@@ -1163,13 +1163,13 @@ function diffHTML(d){
    ${d.del.length?`<h3 class="dh">移除 ${d.del.length} 項</h3>${d.del.map(x=>`<div class="df"><s>${h(x.name)}</s></div>`).join('')}`:''}`;
 }
 const PST={draft:['草稿（編輯中）','y'],review:['待院長審核','y'],approved:['院長已核准・待更新上線','g'],returned:['院長退回修改','r']};
-function priceSheets(prices,date,label){
+function priceSheets(prices,date,label,imgs){
   const cats=CATS.filter(c=>c!=='健保'&&c!=='檢查'&&prices.some(x=>x.cat===c&&!x.removed));
   const pages=[];let cur=[];let n=0;
-  for(const c of cats){const L=prices.filter(x=>x.cat===c&&!x.removed);const w=2+L.length+L.filter(x=>x.desc).length*0.8;if(n+w>26&&cur.length){pages.push(cur);cur=[];n=0}cur.push([c,L]);n+=w}
+  for(const c of cats){const L=prices.filter(x=>x.cat===c&&!x.removed);const w=2+L.length+L.filter(x=>x.desc).length*0.8+(imgs?L.filter(x=>itemPics(x.id,imgs).length).length*3.2:0);if(n+w>26&&cur.length){pages.push(cur);cur=[];n=0}cur.push([c,L]);n+=w}
   if(cur.length)pages.push(cur);
-  return pages.map((pg,k)=>`<section class="sheet psheet"><header class="ps-top"><div class="s-brand"><div class="m">立</div><div><b>立威口腔顎面外科牙醫診所</b><small>LEADER WAY OMS DENTAL CLINIC</small></div></div><div class="s-meta">自費醫療項目收費標準<br>${h(label||'')} ${h(date||'')}</div></header>
-    ${pg.map(([c,L])=>`<div class="ps-cat"><h3>${h(c)}</h3><table class="ps-t"><thead><tr><th>項目</th><th>說明</th><th class="r">費用</th></tr></thead><tbody>${L.map(x=>`<tr><td><b>${h(x.name)}</b></td><td>${h(x.desc||'')}</td><td class="r">${rangeTxt(x)?rangeTxt(x)+' / '+h(x.unit):'依醫師評估'}</td></tr>`).join('')}</tbody></table></div>`).join('')}
+  return pages.map((pg,k)=>`<section class="sheet psheet"><header class="ps-top"><div class="s-brand"><div class="m">立</div><div><b>立威口腔顎面外科牙醫診所</b><small>LEADER WAY OMS DENTAL CLINIC</small></div></div><div class="s-meta">自費醫療項目收費標準${imgs?'':'（內部版）'}<br>${h(label||'')} ${h(date||'')}</div></header>
+    ${pg.map(([c,L])=>`<div class="ps-cat"><h3>${h(c)}</h3><table class="ps-t"><thead><tr><th>項目</th><th>說明</th><th class="r">費用</th></tr></thead><tbody>${L.map(x=>`<tr><td><b>${h(x.name)}</b></td><td>${h(x.desc||'')}${imgs&&itemPics(x.id,imgs).length?`<div class="ps-img">${itemPics(x.id,imgs).map(im=>`<img src="${I(im.src)}" alt="">`).join('')}</div>`:''}</td><td class="r">${rangeTxt(x)?rangeTxt(x)+' / '+h(x.unit):'依醫師評估'}</td></tr>`).join('')}</tbody></table></div>`).join('')}
     <footer class="s-foot"><span>§ 治療種類及報價依醫師評估建議為主，會與患者溝通確認後再執行。</span><span>${k+1} / ${pages.length}</span></footer></section>`).join('');
 }
 function viewPrices(){
@@ -1179,8 +1179,8 @@ function viewPrices(){
     ${D?`<span class="pill ${PST[D.status][1]}">${PST[D.status][0]}</span>`:''}</div>
     <div class="tabs"><button class="${tab==='live'?'on':''}" onclick="go('prices',{tab:'live'})">目前版本</button>${D||ed?`<button class="${tab==='draft'?'on':''}" onclick="go('prices',{tab:'draft'})">${D?'修改草稿':'編輯'}</button>`:''}<button class="${tab==='hist'?'on':''}" onclick="go('prices',{tab:'hist'})">歷史版本（${vers.length}）</button></div></div>`;
   if(tab==='hist'){
-    if(V.ver!=null){const v=vers[V.ver];return head+`<div class="toolbar"><button class="btn sm" onclick="go('prices',{tab:'hist'})">← 歷史版本</button><button class="btn sm" onclick="window.print()">輸出 PDF</button><button class="btn sm" onclick="act.png('收費標準_${h(v.date)}')">輸出 PNG</button></div><div id="sheetWrap">${priceSheets(v.prices,v.date,'歷史版本')}</div>`}
-    return head+`<div class="card list">${vers.length?vers.map((v,i)=>`<div class="it" onclick="go('prices',{tab:'hist',ver:${i}})"><div class="grow"><b>${h(v.date)} 之前使用的版本</b><span class="muted">${h(v.by||'')}${v.note?'・'+h(v.note):''}・${v.prices.length} 項</span></div><span class="pill">查看</span></div>`).join(''):'<p class="muted">還沒有歷史版本。每次更新上線，舊版本會自動備份在這裡。</p>'}</div>`;
+    if(V.ver!=null){const v=vers[V.ver];return head+`<div class="toolbar"><button class="btn sm" onclick="go('prices',{tab:'hist'})">← 歷史版本</button>${v.file?`<button class="btn sm" onclick="act.prFileOpen(${V.ver})">原始檔案</button>`:''}<button class="btn sm" onclick="window.print()">輸出 PDF</button><button class="btn sm" onclick="act.png('收費標準_${h(v.date)}')">輸出 PNG</button></div><div id="sheetWrap">${priceSheets(v.prices,v.date,'歷史版本')}</div>`}
+    return head+`<div class="card list">${vers.length?vers.map((v,i)=>`<div class="it" onclick="go('prices',{tab:'hist',ver:${i}})"><div class="grow"><b>${h(v.date)} 之前使用的版本</b><span class="muted">${h(v.by||'')}${v.note?'・'+h(v.note):''}・${v.prices.length} 項${v.file?'・附原始檔案':''}</span></div><span class="pill">查看</span></div>`).join(''):'<p class="muted">還沒有歷史版本。每次更新上線，舊版本會自動備份在這裡。</p>'}</div>`;
   }
   if(tab==='draft'){
     if(!D)return head+`<div class="card"><p style="margin:0 0 10px">修改價目表會先存成草稿，送院長審核，核准後再按「更新上線」才會生效。已經出過的報價不受影響。</p>${ed?'<button class="btn pri" onclick="act.prDraft()">開始編輯</button>':'<p class="muted">你沒有編輯價目表的權限，請管理員在「設定」開啟。</p>'}</div>`;
@@ -1198,10 +1198,12 @@ function viewPrices(){
     ${editable?`<div class="card"><button class="btn sm" onclick="act.prAdd()">＋新增項目</button></div>`:''}
     ${cats.map(c=>`<details class="card sec" ${V.cat===c?'open':''}><summary><h2>${h(c)}</h2><span class="pill">${D.prices.filter(x=>x.cat===c&&!x.removed).length} 項</span></summary>${D.prices.map((x,k)=>x.cat!==c?'':prEditRow(x,k,editable,D)).join('')}</details>`).join('')}`;
   }
-  return head+`<div class="toolbar"><button class="btn sm" onclick="window.print()">輸出 PDF</button><button class="btn sm" onclick="act.png('收費標準_${h(S.priceDate||'')}')">輸出 PNG</button></div><div id="sheetWrap">${priceSheets(S.prices,S.priceDate,'')}</div>`;
+  const outV=V.out==='pub';const F=S.priceFile;
+  return head+`<div class="card"><div class="row"><div class="grow"><b>原始檔案</b><div class="muted">${F?h(F.name)+'・'+h(F.at)+' '+h(F.by)+' 上傳':'尚未上傳（例如收費標準 PDF）'}</div></div>${F?`<button class="btn sm" onclick="act.prFileOpen('cur')">查看</button>`:''}${canEditPrice()?`<label class="btn sm ${F?'':'pri'}" for="pf-f">${F?'更換':'上傳'}</label><input id="pf-f" type="file" accept="application/pdf,image/*" hidden onchange="act.prFile(this)">`:''}</div>${syncOn()?'':'<p class="muted" style="margin:6px 0 0">尚未連上診所雲端，上傳的檔案只會存在這支手機。</p>'}</div>
+  <div class="toolbar"><div class="tabs" style="margin:0"><button class="${outV?'':'on'}" onclick="go('prices',{tab:'live'})">內部版</button><button class="${outV?'on':''}" onclick="go('prices',{tab:'live',out:'pub'})">對外版（含圖片）</button></div><button class="btn sm" onclick="window.print()">輸出 PDF</button><button class="btn sm" onclick="act.png('收費標準${outV?'_對外版':''}_${h(S.priceDate||'')}')">輸出 PNG</button></div><div id="sheetWrap">${priceSheets(S.prices,S.priceDate,'',outV?(S.itemImgs||{}):null)}</div>`;
 }
 function prEditRow(x,k,ed,D){
-  const dis=ed?'':'disabled';const imgs=(D.imgs||{})[x.id]||[];const set=f=>`act.prSet(${k},'${f}',this.value)`;
+  const dis=ed?'':'disabled';const imgs=itemPics(x.id,D.imgs||{});const set=f=>`act.prSet(${k},'${f}',this.value)`;
   return `<div class="pe ${x.removed?'rm':''}"><div class="row"><input class="i grow" value="${h(x.name)}" ${dis} onchange="${set('name')}"><select class="mini" ${dis} onchange="${set('cat')}">${CATS.map(c=>`<option ${c===x.cat?'selected':''}>${c}</option>`).join('')}</select>${ed?(x.removed?`<button class="btn sm" onclick="act.prSet(${k},'removed','')">取消移除</button>`:`<button class="btn sm" onclick="act.prSet(${k},'removed','1')">移除</button>`):''}</div>
    <div class="pe-g"><label>單位<input ${dis} value="${h(x.unit)}" onchange="${set('unit')}"></label><label>預設價<input type="number" ${dis} value="${x.price??''}" onchange="${set('price')}"></label><label>前牙價<input type="number" ${dis} value="${x.front??''}" onchange="${set('front')}"></label><label>最低<input type="number" ${dis} value="${x.min??''}" onchange="${set('min')}"></label><label>最高<input type="number" ${dis} value="${x.max??''}" onchange="${set('max')}"></label><label class="ck"><input type="checkbox" ${dis} ${x.from?'checked':''} onchange="act.prSet(${k},'from',this.checked?'1':'')">「起」</label></div>
    <label class="f">說明（會印在價目表）</label><textarea class="i" style="min-height:54px" ${dis} onchange="${set('desc')}">${h(x.desc||'')}</textarea>
@@ -1849,6 +1851,25 @@ function estPos(p,t){
   if(known.length===1){const a=known[0];return {x:a.x+(i-a.k)*3.4,y:a.y+(row===UPPER?-1:-1)*(curve(i)-curve(a.k)),est:true}}
   return {x:22+i*(56/15),y:(row===UPPER?45:58)-curve(i),est:true};
 }
+/* ===== 價目表項目預設圖片（取自收費標準 PDF） ===== */
+const ITEM_PICS={
+  ao4:[['ao4-diagram','All-on-4：四支植體支撐全口假牙'],['ao4-compare','一般全口植牙與全口速定植牙比較']],
+  ao4a:[['ao4a','樂活款：二氧化鋯一體成形']],ao4b:[['ao4b-1','精緻款：鈦合金支架'],['ao4b-2','精緻款：鈦合金支架＋一體成形']],
+  ao4c:[['ao4c','尊爵款：鈦金屬複合材支架＋全瓷牙冠']],ao4d:[['ao4d','極致款：全鈦金屬支架＋全瓷牙冠']],
+  imp:[['imp-1','人工植牙示意'],['imp-2','植體與牙冠']],guide:[['guide','電腦定位導引板']],
+  post:[['post','玻璃纖維釘柱']],crown:[['crown','全瓷牙冠']],onlay:[['onlay','3D 齒雕全瓷嵌體：治療前後']],
+  rpd:[['rpd','正式活動假牙（全口）']],rpdp:[['rpdp','正式活動假牙（局部）']],overd2:[['overd','鈕扣式植體假牙']],overd3:[['overd','鈕扣式植體假牙']],overd4:[['overd','鈕扣式植體假牙']],
+  temprpd:[['temprpd','臨時活動假牙']],temprpdp:[['temprpd','臨時活動假牙']],clasp:[['clasp','夾扣式假牙']],
+  laser:[['laser-step','水雷射治療流程：牙結石堆積 → 刮除 → 水雷射除菌 → 完成']],
+  gtr:[['gtr-1','牙周組織再生手術：治療前'],['gtr-2','治療後，牙周組織缺陷變小']],
+  gingiva:[['gingiva-1','牙齦覆蓋手術：治療前'],['gingiva-2','治療後，牙根整齊無過長'],['gingiva-3','牙齦增厚手術：治療前'],['gingiva-4','治療後，牙齦增厚、延緩萎縮']],
+  graft:[['socket-1','拔牙補骨：拔牙前'],['socket-2','拔牙補骨後客製化牙橋']],
+  retainer:[['ret-metal','金屬維持器'],['ret-clear','透明維持器'],['ret-lingual','舌側維持器']],
+  col:[['col-use','拔牙後使用膠原蛋白，組織再生'],['col-sinus','上顎拔牙有鼻竇暴露之風險'],['col-nerve','下顎拔牙恐產生下齒槽神經併發症']],
+  ems:[['ems-1','高滿點縫清潔']],emsplus:[['emsplus-1','淺牙周囊袋噴砂治療'],['emsplus-2','深牙周囊袋治療']],
+  impcare:[['impcare-1','植體螺紋及牙周囊袋內治療'],['impcare-2','植體牙冠及基台治療']]
+};
+function itemPics(pid,imgs){const src=imgs||S.itemImgs||{};if(Object.prototype.hasOwnProperty.call(src,pid))return src[pid]||[];return (ITEM_PICS[pid]||[]).map(([f,c])=>({src:'assets/items/'+f+'.jpg',cap:c,def:true}))}
 const EQUIP={
   flow:['flow.jpg','從 3D 影像檢查到安排治療時間的完整流程',true],
   xguide:['xguide.jpg','美國 X-nav® X-Guide 動態導航系統'],
@@ -1866,15 +1887,15 @@ const EQUIP={
 };
 function equipList(q){
   const ids=new Set(q.items.map(i=>i.pid));const keys=[];const add=(...k)=>k.forEach(x=>{if(!keys.includes(x))keys.push(x)});
-  if(['imp','graft','auto','bba','sinus','ao4','bridge'].some(x=>ids.has(x)))add('flow','xguide','or','scanB','scanA');
+  if(['imp','graft','auto','bba','sinus','ao4','ao4a','ao4b','ao4c','ao4d','bridge','guide'].some(x=>ids.has(x)))add('flow','xguide','or','scanB','scanA');
   if(ids.has('perio'))add('scaler');
   if(ids.has('laser'))add('lasertip','biolase');
   if(ids.has('ems')||(q.gifts||[]).some(g=>/EMS|噴砂/.test(g)))add('ems');
-  if(ids.has('ortho'))add('itero');
+  if(['ortho','orthoinv','orthotrad','orthodamon','orthopart'].some(x=>ids.has(x)))add('itero');
   if(ids.has('micro'))add('zeiss');
-  if(['seda','ga','ao4seda','ao4ga'].includes(q.sed.type))add('anes','recovery');
+  if(['seda','ga','ao4','ao4seda','ao4ga'].includes(q.sed.type))add('anes','recovery');
   const list=keys.map(k=>({src:'assets/'+EQUIP[k][0],cap:EQUIP[k][1],wide:!!EQUIP[k][2]}));
-  for(const pid of ids){for(const im of ((S.itemImgs||{})[pid]||[]))list.push({src:im.src,cap:im.cap,wide:false})}
+  const seen=new Set();for(const pid of ids){for(const im of itemPics(pid)){if(seen.has(im.src))continue;seen.add(im.src);list.push({src:im.src,cap:im.cap,wide:false})}}
   return list;
 }
 function equipHTML(eq,brand,np){
@@ -2149,8 +2170,8 @@ const act={
    <div class="row"><div class="grow"><label class="f">最低價</label><input class="i" type="number" id="pa-min"></div><div class="grow"><label class="f">最高價</label><input class="i" type="number" id="pa-max"></div></div><label class="f">醫囑寫法（逗號分開）</label><input class="i" id="pa-a"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.prAddSave()">新增到草稿</button></div>`)},
   prAddSave(){const g=id=>document.getElementById(id).value.trim();const name=g('pa-n');if(!name)return toast('請填名稱');const mn=g('pa-min')===''?null:+g('pa-min'),mx=g('pa-max')===''?mn:+g('pa-max');
     S.priceDraft.prices.push({id:'c'+Date.now(),name,cat:g('pa-c'),unit:g('pa-u'),price:mn,min:mn,max:mx,alias:[name,...g('pa-a').split(/[,，、]/).map(t=>t.trim()).filter(Boolean)],desc:'',pay:''});V.cat=g('pa-c');save();closeModal();render()},
-  prImg(id,inp){const f=inp.files[0];if(!f)return;compress(f,1000,0.65).then(d=>{const D=S.priceDraft;D.imgs=D.imgs||{};(D.imgs[id]=D.imgs[id]||[]).push({src:d,cap:(D.prices.find(x=>x.id===id)||{}).name||''});save();render()})},
-  prImgDel(id,j){S.priceDraft.imgs[id].splice(j,1);save();render()},
+  prImg(id,inp){const f=inp.files[0];if(!f)return;compress(f,1000,0.65).then(d=>{const D=S.priceDraft;D.imgs=D.imgs||{};if(!Object.prototype.hasOwnProperty.call(D.imgs,id))D.imgs[id]=itemPics(id,{}).map(x=>({src:x.src,cap:x.cap}));D.imgs[id].push({src:d,cap:(D.prices.find(x=>x.id===id)||{}).name||''});save();render()})},
+  prImgDel(id,j){const D=S.priceDraft;D.imgs=D.imgs||{};if(!Object.prototype.hasOwnProperty.call(D.imgs,id))D.imgs[id]=itemPics(id,{}).map(x=>({src:x.src,cap:x.cap}));D.imgs[id].splice(j,1);save();render()},
   prSubmit(){const D=S.priceDraft;const d=priceDiff(S.prices,D.prices);if(!d.add.length&&!d.del.length&&!d.chg.length&&JSON.stringify(D.imgs||{})===JSON.stringify(S.itemImgs||{}))return toast('還沒有修改任何內容');D.status='review';D.submittedBy=me().name;D.submittedAt=today();save();toast('已送院長審核');render()},
   prDiscard(){modal(`<h2>放棄這份草稿？</h2><p class="muted">草稿裡的修改都會消失，目前上線的價目表不受影響。</p><label class="f">刪除密碼</label><input class="i" type="password" id="pd-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="if(document.getElementById('pd-pw').value!==DEL_PW)return toast('密碼不正確');S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:me().name,label:'價目表草稿',backup:false});S.priceDraft=null;save();closeModal();go('prices')">放棄草稿</button></div>`)},
   prApprove(){const D=S.priceDraft;D.status='approved';D.approvedBy=me().name;D.approvedAt=today();save();toast('已核准，請負責的人按「更新上線」');render()},
@@ -2158,8 +2179,10 @@ const act={
   prPublishOpen(){const D=S.priceDraft;modal(`<h2>更新上線</h2><p>以下內容與價格會同步更新到系統（醫囑解析、報價、計畫書都會改用新價目表）。已經出過的報價和簽過的計畫書不會改變。</p><div class="card" style="max-height:40vh;overflow:auto">${diffHTML(priceDiff(S.prices,D.prices))}</div>
    <label style="display:block;margin:10px 0;font-size:15px"><input type="checkbox" id="pp-ok"> 我已確認以上內容與價格，系統同步修改</label><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.prPublish()">更新上線</button></div>`)},
   prPublish(){if(!document.getElementById('pp-ok').checked)return toast('請先勾選確認');const D=S.priceDraft;S.priceVersions=S.priceVersions||[];
-    S.priceVersions.unshift({ver:S.priceDate||'',date:S.priceDate||'',by:S.priceBy||'',approvedBy:S.priceApprover||'',note:'更新前自動備份',prices:S.prices,imgs:S.itemImgs});
+    S.priceVersions.unshift({ver:S.priceDate||'',date:S.priceDate||'',by:S.priceBy||'',approvedBy:S.priceApprover||'',note:'更新前自動備份',prices:S.prices,imgs:S.itemImgs,file:S.priceFile||null});S.priceFile=null;
     S.prices=D.prices.filter(x=>!x.removed).map(x=>{delete x.removed;return x});S.itemImgs=D.imgs||{};S.priceDate=today();S.priceBy=me().name;S.priceApprover=D.approvedBy;S.priceDraft=null;_cand=null;save();closeModal();toast('價目表已更新上線');go('prices')},
+  prFile(inp){const f=inp.files[0];if(!f)return;if(f.size>15e6)return toast('檔案太大（上限 15MB）');const fr=new FileReader();fr.onload=()=>{S.priceFile={name:f.name,src:fr.result,at:today(),by:me().name};save();toast(syncOn()?'已上傳，正在存到診所雲端…':'已上傳到這支手機');render()};fr.readAsDataURL(f)},
+  async prFileOpen(w){const F=w==='cur'?S.priceFile:(S.priceVersions[w]||{}).file;if(!F)return;const win=window.open('','_blank');try{const d=await imgData(F.src);const b=await (await fetch(d)).blob();const u=URL.createObjectURL(b);if(win)win.location=u;else location.href=u}catch(e){if(win)win.close();toast('打不開檔案：'+e.message)}},
   prPerm(acc,on){const u=S.users.find(x=>x.acc===acc);u.priceEdit=on;save();toast((on?'已開放 ':'已關閉 ')+u.name+' 編輯價目表')},
   msgRead(k){const p=P(V.pid);p.msgs[k].read=true;p.msgs[k].readBy=me().name;logP(p,'已讀醫師交代');save();render()},
   lineCls(key,v){const q=tmp.q2;q.ovr=q.ovr||{};q.ovr[key]=v;tmp.q2=buildQ2(q.orders,q.ovr,q,P(V.pid));render()},
