@@ -127,6 +127,7 @@ details.sec[open]>summary{margin-bottom:10px}
 .ps-top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid var(--orange);padding-bottom:10px}
 .ps-cat h3{background:var(--deep);color:#fff;font-family:var(--display);letter-spacing:.12em;margin:0 0 6px;padding:6px 12px;font-size:16px}
 .ps-t{width:100%;border-collapse:collapse;font-size:12.5px}.ps-t th{background:#E8E3DE;color:var(--muted);font-weight:500;text-align:left;padding:4px 8px}.ps-t td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}.ps-t td:first-child{width:30%}.ps-t .r{text-align:right;white-space:nowrap}.ps-img{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.ps-img img{height:86px;max-width:150px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.syncchip{border:0;background:#EAF6EE;color:#2f7a4a;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;margin-right:6px;white-space:nowrap;cursor:pointer}.syncchip.busy{background:#FFF4CC;color:#8a6a00}.syncchip.bad{background:#FBE1DA;color:var(--bad)}.syncwarn{background:#FBE1DA;border:1.5px solid var(--bad);color:var(--bad);border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:14px;cursor:pointer}.syncwarn span{color:var(--ink);font-size:13px}
 .syncdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#bbb;vertical-align:middle;margin-right:4px}.syncdot.ok{background:var(--good)}.syncdot.busy{background:#E8B400}.syncdot.bad{background:var(--bad)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px}
 .tile{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px}
@@ -237,7 +238,6 @@ canvas.pad{width:100%;height:200px;border:1px dashed var(--muted);border-radius:
 'use strict';
 /* ========= 基本資料 ========= */
 const KEY='lw-case-demo-v1';
-const REG_CODE='2508';
 const DOCTORS=['林涵威','周厚江','唐宗凡','簡志忠','邵獻慶','謝欣婷','黃振邦','蔡世軒','蕭至勛','尹姵今','陳德星','華芳瑩','黃宣諭','林正忠','吳哲勛','趙子毅','林涵宇','許彤年'];
 const CONSULT=['儒瑩','妏玲','暐涵','苡薇','陳芸','鎧甄'];
 const ROLES=['管理員','院長','個管主管','諮詢師','醫師','臨床'];
@@ -254,120 +254,108 @@ const ST={
 };
 const PRICE_VER='2510';
 const CATS=['全口重建','植牙','贗復','活動假牙','顯微根管','美白','牙周','潔牙','成人矯正','兒童矯正','兒童牙科','TMJ','口外','其他','健保','檢查'];
-const DEFAULT_PRICES=[
- /* ===== All-on-4 ===== */
- {id:'ao4',name:'All-on-4（待選款式）',cat:'全口重建',unit:'顎',price:700000,min:700000,max:900000,alias:['ao4','all-on-4','all on 4','allon4','一日全口'],dep:50000,desc:'一日全口速定植牙：特殊設計植體支撐假牙，避免多次牙床重建手術。含單顎四支植體之導航手術、過渡時期假牙、正式假牙、耗材，以及鎮靜／全身麻醉基本時數（單顎 2 小時、全口 4 小時）。',pay:'資料收集 $50,000／顎 → 術前兩週 $400,000／顎 → 正式模型尾款繳清'},
- {id:'ao4a',name:'All-on-4 樂活款',cat:'全口重建',unit:'顎',price:700000,min:700000,max:700000,alias:['樂活款'],dep:50000,desc:'二氧化鋯一體成形。費用經濟實惠，適用咬合力適中及中高齡族群（全口 140 萬）。',pay:'資料收集 $50,000／顎 → 術前兩週 $400,000／顎 → 正式模型尾款繳清'},
- {id:'ao4b',name:'All-on-4 精緻款',cat:'全口重建',unit:'顎',price:800000,min:800000,max:800000,alias:['精緻款'],dep:50000,desc:'鈦合金支架＋二氧化鋯一體成形，適用咬合力道較大者（全口 160 萬）。',pay:'資料收集 $50,000／顎 → 術前兩週 $400,000／顎 → 正式模型尾款繳清'},
- {id:'ao4c',name:'All-on-4 尊爵款',cat:'全口重建',unit:'顎',price:850000,min:850000,max:850000,alias:['尊爵款'],dep:50000,desc:'鈦金屬複合材支架＋全瓷牙冠，咬合碰撞聲響較小，可局部維修（全口 170 萬）。',pay:'資料收集 $50,000／顎 → 術前兩週 $400,000／顎 → 正式模型尾款繳清'},
- {id:'ao4d',name:'All-on-4 極致款',cat:'全口重建',unit:'顎',price:900000,min:900000,max:900000,alias:['極致款'],dep:50000,desc:'全鈦金屬支架＋全瓷牙冠，結構強度最高、使用年限最長（全口 180 萬）。',pay:'資料收集 $50,000／顎 → 術前兩週 $400,000／顎 → 正式模型尾款繳清'},
- {id:'ao4imp',name:'All-on-4 增加植體',cat:'全口重建',unit:'支',price:100000,min:100000,max:100000,alias:['增加植體'],desc:'一般植體，每支加收（含鎮靜／全身麻醉之費用差額）。'},
- {id:'zygoma',name:'顴骨植體',cat:'全口重建',unit:'支',price:100000,min:100000,max:100000,alias:['顴骨','zygoma'],dep:10000,desc:'更換為顴骨植體（無增加植體），每支加收。'},
- {id:'allon6',name:'All-on-6',cat:'全口重建',unit:'顎',price:null,min:null,max:null,alias:['ao6','all-on-6','all on 6','allon6'],dep:50000,desc:''},
- /* ===== 人工植牙 ===== */
- {id:'imp',name:'植牙',cat:'植牙',unit:'顆',price:110000,front:120000,min:110000,max:120000,alias:['植牙','植體','implant','imp'],dep:10000,desc:'4D 導航微創植牙：含動態導航手術費、人工牙根、二氧化鋯／陶瓷贗復物及鈦合金支台零件。門牙全瓷冠 12 萬、後牙全鋯冠 11 萬；選擇傳統手術方式減免 2 萬。',pay:'資料收集 $10,000／顆 → 手術日 $50,000／顆 → 植牙印模尾款繳清'},
- {id:'impup',name:'升級陶瓷支台零件',cat:'植牙',unit:'顆',price:10000,min:10000,max:10000,alias:['陶瓷支台','升級支台'],desc:''},
- {id:'guide',name:'電腦定位導引板',cat:'植牙',unit:'顎',price:12000,min:12000,max:12000,alias:['導引板','導板','stent','surgical guide'],desc:'3D 影像斷層掃描與電腦輔助設計製作手術定位導板。不含植牙及水雷射費用，須經醫師評估。'},
- {id:'graft',name:'人工補骨手術',cat:'植牙',unit:'區',price:20000,min:20000,max:90000,alias:['補骨','gbr','骨粉','人工骨','bone graft'],dep:5000,desc:'',pay:'資料收集 $5,000／顆 → 手術日尾款繳清'},
- {id:'sinus',name:'鼻竇增高手術',cat:'植牙',unit:'區',price:20000,min:20000,max:null,alias:['鼻竇','sinus','上顎竇','sinus lift'],desc:''},
- {id:'auto',name:'自體骨移植',cat:'植牙',unit:'區',price:50000,min:50000,max:50000,alias:['自體骨','自體補骨'],dep:5000,desc:'',pay:'資料收集 $5,000／顆 → 手術日尾款繳清'},
- {id:'bba',name:'骨塊移植（Onlay graft）',cat:'植牙',unit:'區',price:null,min:null,max:null,alias:['bba','onlay graft','骨塊'],dep:5000,desc:'',pay:'資料收集 $5,000 → 手術日尾款繳清'},
- {id:'prf',name:'生長因子 PRF／CGF',cat:'植牙',unit:'次',price:null,min:null,max:null,alias:['prf','cgf','生長因子'],desc:''},
- {id:'periimp',name:'植體周圍炎治療',cat:'植牙',unit:'顆',price:null,min:null,max:null,alias:['植體周圍炎','peri-implantitis'],desc:''},
- {id:'bridge',name:'牙橋假牙',cat:'贗復',unit:'顆',price:25000,front:28000,min:25000,max:28000,alias:['牙橋','br','fpd','bridge'],desc:'前牙 28,000／顆、後牙 25,000／顆。',pay:''},
- /* ===== 固定假牙 ===== */
- {id:'crown',name:'假牙（牙冠）',cat:'贗復',unit:'顆',price:25000,front:28000,min:25000,max:28000,from:true,alias:['假牙','牙冠','crown','全瓷冠','全鋯冠','cr','pfm','zr','牙套'],desc:'全鋯冠（二氧化鋯）結構強度高兼具美觀；門牙全瓷冠（二矽酸鋰）為美觀區域專用。',pay:'臨時假牙 $5,000／顆 → 正式印模 後牙 $20,000／前牙 $23,000'},
- {id:'post',name:'玻璃纖維釘柱',cat:'贗復',unit:'顆',price:3000,min:3000,max:3000,alias:['牙釘','post core','樁柱','釘柱','柱心'],desc:'較傳統金屬鑄造釘有彈性，降低齒裂風險；有使用才會收費。金屬鑄造釘或陶瓷製釘約 4,000–8,000 元。',pay:'有使用才會收費'},
- {id:'tempcr',name:'臨時假牙',cat:'贗復',unit:'顆',price:5000,min:5000,max:5000,alias:['臨時假牙','temp'],desc:'正式假牙裝戴前必要的診療項目，費用包含在正式假牙中（使用時間較長或有其他功用另計）。'},
- {id:'onlay',name:'3D 齒雕（全瓷嵌體）',cat:'贗復',unit:'顆',price:25000,min:25000,max:30000,from:true,alias:['齒雕','嵌體','onlay','inlay'],desc:'保留較多齒質，兼具美觀與功能；醫師依嵌體覆蓋面積大小報價。',pay:'正式印模 $15,000／顆 → 裝戴尾款繳清'},
- {id:'veneer',name:'陶瓷貼片',cat:'美白',unit:'顆',price:28000,min:28000,max:28000,from:true,alias:['貼片','veneer','lv'],desc:'追求長期穩定的極致美感，適用牙齒變色嚴重或內因性染色。',pay:'臨時假牙 $5,000／顆 → 正式印模 $23,000／顆'},
- {id:'resin',name:'美學樹脂填補',cat:'贗復',unit:'顆',price:null,min:null,max:null,alias:['美學樹脂','樹脂貼片'],desc:''},
- {id:'apico',name:'根尖手術',cat:'顯微根管',unit:'顆',price:null,min:null,max:null,alias:['根尖手術','apico','apicoectomy'],desc:''},
- {id:'vpt',name:'活髓治療',cat:'顯微根管',unit:'顆',price:null,min:null,max:null,alias:['活髓治療','vpt','活隨'],desc:''},
- /* ===== 活動假牙 ===== */
- {id:'rpd',name:'正式活動假牙（全口）',cat:'活動假牙',unit:'顎',price:60000,min:60000,max:60000,alias:['活動假牙','cd','全口活動假牙'],desc:'金屬床＋塑鋼牙，適合全口缺牙；靠真空吸引力附著於牙床上。',pay:'取初模 $5,000 → 定高度試排牙 $30,000 → 正式印模 $25,000'},
- {id:'rpdp',name:'正式活動假牙（局部）',cat:'活動假牙',unit:'顎',price:50000,min:50000,max:60000,alias:['局部活動假牙','rpd'],desc:'依牙齒顆數而定。金屬支架含牙勾及牙靠。'},
- {id:'overd2',name:'鈕扣式植體假牙（2 支植體）',cat:'活動假牙',unit:'顎',price:300000,min:300000,max:300000,alias:['鈕扣式','overdenture','覆蓋假牙','植體支撐'],desc:'利用植體上的鈕扣式零件穩定活動假牙。上顎骨密度低需至少 3 支植體並以金屬連接構件固位，+80,000。'},
- {id:'overd3',name:'鈕扣式植體假牙（3 支植體）',cat:'活動假牙',unit:'顎',price:400000,min:400000,max:400000,alias:[],desc:''},
- {id:'overd4',name:'鈕扣式植體假牙（4 支植體）',cat:'活動假牙',unit:'顎',price:500000,min:500000,max:500000,alias:[],desc:''},
- {id:'temprpd',name:'臨時活動假牙（全口）',cat:'活動假牙',unit:'顎',price:30000,min:30000,max:30000,from:true,alias:['臨時活動假牙','interim denture','interm denture','id'],desc:'樹脂床＋樹脂牙，適合傷口癒合期、牙周病追蹤治療中的患者。',pay:'取初模收集資料 $5,000 → 正式印模 $10,000 → 定高度試戴 尾款'},
- {id:'temprpdp',name:'臨時活動假牙（局部）',cat:'活動假牙',unit:'顎',price:25000,min:25000,max:30000,alias:['局部臨時活動假牙'],desc:'依牙齒顆數而定。'},
- {id:'clasp',name:'夾扣式假牙',cat:'活動假牙',unit:'顆',price:10000,min:10000,max:10000,alias:['夾扣','小螃蟹'],desc:''},
- /* ===== 顯微根管 ===== */
- {id:'micro',name:'顯微鏡根管治療',cat:'顯微根管',unit:'顆',price:12000,min:12000,max:40000,from:true,tiers:{front:[12000,18000],pre:[20000,27000],molar:[28000,40000]},alias:['顯微根管','micro','顯微','re-endo','重新根管','重新做endo','重做endo','重新做根管'],dep:5000,desc:'蔡司牙科顯微鏡。前牙 12,000–18,000、小臼齒 20,000–27,000、大臼齒 28,000–40,000（起）；依難易度及根管數目報價。',pay:'資料收集 $5,000 → 第一次顯微根管治療尾款結清'},
- {id:'microfill',name:'特殊根管修補材料',cat:'顯微根管',unit:'顆',price:6000,min:6000,max:6000,from:true,alias:['修補材料','mta'],desc:''},
- {id:'micropost',name:'顯微鏡拆除牙釘柱',cat:'顯微根管',unit:'顆',price:6000,min:6000,max:6000,alias:['拆牙釘','拆釘','拆除牙釘','post removal'],desc:'有效降低拆除時齒裂發生。'},
- /* ===== 牙齒美白 ===== */
- {id:'sandbl',name:'噴砂美白（局部）',cat:'美白',unit:'次',price:4000,min:4000,max:4000,from:true,alias:['噴砂美白'],desc:'適用牙齒堆積大量黃或黑色垢者，不會改變牙齒原色。'},
- {id:'bleach',name:'冷光美白',cat:'美白',unit:'次',price:20000,min:20000,max:20000,from:true,alias:['冷光美白','冷光'],desc:'適用追求效果顯著且立即者。'},
- {id:'homebl',name:'居家美白',cat:'美白',unit:'組',price:15000,min:15000,max:15000,alias:['居家美白'],desc:'含藥劑兩管及牙托一副，約需 14 天以上。'},
- /* ===== 牙周 ===== */
- {id:'laser',name:'全口水雷射牙周治療',cat:'牙周',unit:'次',price:40000,min:40000,max:60000,from:true,alias:['水雷射','waterlase','laser','雷射'],dep:5000,desc:'搭配 Biolase 水雷射深層治療，不翻瓣、微創，促進牙周再生。',pay:'資料收集（雷射訂金）$5,000 → 水雷射治療尾款結清'},
- {id:'gtr',name:'牙周組織再生手術',cat:'牙周',unit:'區',price:30000,min:30000,max:60000,alias:['gtr','再生'],dep:5000,desc:'',pay:'資料收集 $5,000 → 手術當天尾款結清'},
- {id:'cl',name:'牙冠增長術',cat:'牙周',unit:'顆',price:8000,min:8000,max:20000,alias:['牙冠增長','clp'],dep:5000,desc:''},
- {id:'gingiva',name:'牙周微整形（牙齦覆蓋／增厚）',cat:'牙周',unit:'區',price:null,min:null,max:null,alias:['牙齦整形','美學牙齦','牙齦覆蓋','牙齦增厚'],dep:5000,desc:''},
- {id:'ctg',name:'結締組織移植',cat:'牙周',unit:'區',price:20000,min:20000,max:null,alias:['ctg','結締組織','軟組織'],desc:'',pay:'與植牙手術同時進行'},
- {id:'fgg',name:'FGG 游離牙齦移植',cat:'牙周',unit:'區',price:null,min:null,max:null,alias:['fgg','游齦','游離牙齦'],dep:5000,desc:''},
- {id:'apf',name:'牙齦根向復位瓣 APF',cat:'牙周',unit:'區',price:null,min:null,max:null,alias:['apf'],desc:''},
- /* ===== 潔牙 ===== */
- {id:'ems',name:'舒適潔牙 EMS（基礎維護）',cat:'潔牙',unit:'次',price:6000,min:6000,max:8000,alias:['ems','ems洗牙','舒適潔牙','airflow'],desc:'6 道水柱包粉微創清潔，適用極敏感牙齦及術後維護；細緻噴砂 8,000。'},
- {id:'emsplus',name:'精準噴砂（升級保養）',cat:'潔牙',unit:'次',price:8000,min:6000,max:8000,alias:['精準噴砂','噴砂'],desc:'適用牙周病專業療程後及植牙術後維護，可深入牙齦下 4–9mm。'},
- {id:'impcare',name:'植體照護深度清潔',cat:'潔牙',unit:'顆',price:3000,min:3000,max:3000,alias:['植體照護','植體清潔'],desc:'植牙術後零件清潔維護，建議每年至少一次。'},
- /* ===== 成人矯正 ===== */
- {id:'ortho',name:'成人矯正（待選款式）',cat:'成人矯正',unit:'次',price:120000,min:120000,max:260000,from:true,alias:['成人矯正','矯正'],dep:3000,desc:'',pay:'矯正資料收集 $3,000（於本院矯正可含在總費用中）'},
- {id:'orthotrad',name:'傳統矯正',cat:'成人矯正',unit:'次',price:120000,min:120000,max:150000,from:true,alias:['傳統矯正','傳統'],dep:3000,desc:'一般金屬矯正器，適合有預算考量者。',pay:'矯正資料收集 $3,000（含在總費用）・頭期與分期依醫師而定'},
- {id:'orthodamon',name:'戴蒙矯正',cat:'成人矯正',unit:'次',price:150000,min:150000,max:180000,from:true,alias:['戴蒙','damon'],dep:3000,desc:'矯正器有滑蓋、摩擦力低，牙齒移動較快、疼痛感較低。',pay:'矯正資料收集 $3,000（含在總費用）・頭期 $50,000，每月分期依醫師而定'},
- {id:'orthoinv',name:'隱適美',cat:'成人矯正',unit:'次',price:220000,min:220000,max:260000,from:true,alias:['隱適美','inv','invisalign','隱形矯正'],dep:3000,desc:'透明可拆卸牙套，每一兩週換一次，美觀舒適。',pay:'矯正資料收集 $3,000（含在總費用）・頭期依醫師而定，可分 3 次繳納'},
- {id:'orthog',name:'正顎手術',cat:'成人矯正',unit:'次',price:250000,min:250000,max:500000,from:true,alias:['正顎','orthognathic'],desc:'針對顱顏面顎骨問題（戽斗、嚴重暴牙、笑齦過大等），全身麻醉，可配合 3D 斷層與電腦模擬。'},
- {id:'orthopart',name:'局部矯正（扶正）',cat:'成人矯正',unit:'顆',price:30000,min:30000,max:50000,alias:['局部矯正','扶正'],dep:3000,desc:'因長期缺牙導致牙齒傾倒，以矯正器及骨釘扶正。'},
- {id:'tad',name:'矯正用骨釘',cat:'成人矯正',unit:'支',price:6000,min:6000,max:6000,alias:['骨釘','tad','mia','迷你骨釘'],desc:'局部麻醉下旋入齒槽骨作為施力點，矯正完成隨即移除。'},
- {id:'retainer',name:'維持器',cat:'成人矯正',unit:'顎',price:6000,min:6000,max:6000,alias:['維持器','retainer'],desc:'金屬／透明／舌側皆為 6,000／顎。'},
- {id:'orthoext',name:'矯正拔牙',cat:'成人矯正',unit:'顆',price:1000,min:1000,max:1500,alias:['矯正拔牙'],desc:'健保不給付；非於本院矯正者每顆 1,500 元。'},
- {id:'orthodata',name:'矯正資料收集',cat:'成人矯正',unit:'次',price:3000,min:3000,max:3000,alias:['矯正資料','矯正資料收集','矯正資料蒐集'],desc:'矯正前必要的診療項目；於本院矯正，資料收集費含在總費用中；未於本院矯正不予退費，可取回資料電子檔。'},
- /* ===== 兒童矯正 ===== */
- {id:'kidmyo',name:'兒童輕矯正',cat:'兒童矯正',unit:'副',price:35000,min:35000,max:45000,alias:['輕矯正','肌功能'],desc:'依每位兒童齒列、顎骨型態採取不同矯正方式。',pay:''},
- {id:'kidexp',name:'牙弓擴張器',cat:'兒童矯正',unit:'顎',price:25000,min:25000,max:50000,alias:['擴張器','擴弓'],desc:'裝置及療程費用另計。',pay:''},
- {id:'biteplane',name:'咬合斜板',cat:'兒童矯正',unit:'副',price:8000,min:8000,max:8000,alias:['咬合斜板','斜板'],desc:'',pay:'一次付清'},
- {id:'kidtrad',name:'兒童傳統矯正',cat:'兒童矯正',unit:'次',price:40000,min:40000,max:80000,alias:['兒童傳統矯正','兒童矯正'],desc:'',pay:''},
- {id:'kidinv',name:'兒童隱適美',cat:'兒童矯正',unit:'次',price:140000,min:140000,max:180000,alias:['兒童隱適美'],desc:'',pay:''},
- /* ===== 兒童牙科 ===== */
- {id:'kidcrown',name:'前牙樹脂牙套',cat:'兒童牙科',unit:'顆',price:5000,min:5000,max:5000,alias:['樹脂牙套','乳牙樹脂冠','樹脂冠'],desc:'乳牙蛀牙剩餘齒質少，裝牙套可減少斷裂及二次蛀牙。'},
- {id:'kidveneer',name:'乳牙貼片不鏽鋼牙套',cat:'兒童牙科',unit:'顆',price:8000,min:8000,max:8000,alias:['貼片不鏽鋼'],desc:''},
- {id:'kidzr',name:'兒童白色瓷牙套',cat:'兒童牙科',unit:'顆',price:12000,min:12000,max:12000,alias:['白色瓷牙套','瓷牙套'],desc:''},
- {id:'kiddent',name:'兒童假牙組',cat:'兒童牙科',unit:'組',price:10000,min:10000,max:10000,alias:['兒童假牙'],desc:'單顆一組 10,000，加牙每顆 +1,000。'},
- {id:'ssc',name:'兒童金屬牙套 SSC',cat:'兒童牙科',unit:'顆',price:5000,min:5000,max:5000,alias:['ssc','不鏽鋼牙冠','金屬牙套'],desc:'乳牙萌發到換牙需等待 6–9 年，牙套可提供保護。'},
- {id:'kidssc',name:'恆牙不鏽鋼牙套',cat:'兒童牙科',unit:'顆',price:6000,min:6000,max:6000,alias:['恆牙不鏽鋼'],desc:''},
- {id:'sealpay',name:'自費溝隙封填',cat:'兒童牙科',unit:'顆',price:1000,min:1000,max:1000,alias:['自費溝隙封填','自費封填'],desc:'乳臼齒無健保給付。'},
- {id:'fluor',name:'自費塗氟',cat:'兒童牙科',unit:'次',price:1000,min:1000,max:1000,alias:['塗氟','fluoride','tfa'],desc:'高濃度氟化物增強牙齒表面硬度，降低蛀牙發生率。'},
- {id:'space',name:'空間維持器（單側）',cat:'兒童牙科',unit:'組',price:6000,min:6000,max:6000,alias:['空間維持器'],desc:'雙側 10,000／組。'},
- {id:'space2',name:'空間維持器（雙側）',cat:'兒童牙科',unit:'組',price:10000,min:10000,max:10000,alias:['雙側空間維持器'],desc:''},
- /* ===== 其他 ===== */
- {id:'splinth',name:'咬合板',cat:'TMJ',unit:'副',price:30000,min:30000,max:30000,from:true,alias:['硬式咬合板','咬合板','splint'],desc:'適用顳顎關節障礙。戴於上顎墊高咬合、放鬆咀嚼肌，療程約三至六個月。'},
- {id:'splints',name:'咬合板（軟式）',cat:'TMJ',unit:'副',price:null,min:null,max:null,alias:['軟式咬合板'],desc:''},
- {id:'tmjha',name:'關節玻尿酸沖洗／注射（一側）',cat:'TMJ',unit:'側',price:null,min:null,max:null,alias:['玻尿酸','關節沖洗'],desc:''},
- {id:'botox',name:'肉毒桿菌注射（咬肌、磨牙）',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['肉毒','botox'],desc:''},
- {id:'snore',name:'止鼾牙套',cat:'TMJ',unit:'副',price:null,min:null,max:null,alias:['止鼾'],desc:''},
- {id:'tmj',name:'顳顎關節治療',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['tmj','顳顎'],desc:''},
- {id:'col',name:'骨膠原蛋白',cat:'口外',unit:'顆',price:5000,min:5000,max:5000,alias:['膠原蛋白','膠原','膠球','gelfoam','骨膠原'],desc:'拔牙後放置於傷口，保護組織、立即止血、降低感染並促進癒合。'},
- {id:'alveo',name:'齒槽骨整形',cat:'口外',unit:'區',price:null,min:null,max:null,alias:['齒槽骨整形','骨整形','alveoloplasty'],desc:''},
- /* ===== 健保 ===== */
- {id:'ext',name:'拔牙（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['拔牙','拔除','拔','ext','extraction'],desc:''},
- {id:'wisdom',name:'智齒拔除（阻生齒手術）（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['智齒','阻生齒','3rd'],desc:''},
- {id:'sc',name:'洗牙（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['洗牙','sc','scaling','fmsc','fm scaling','定檢'],desc:''},
- {id:'od',name:'補牙（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['補牙','od','充填','rest','蛀牙'],desc:''},
- {id:'perio',name:'牙周統合照護（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['牙統','牙周統合','charting','perio','p1','p2','p3','牙周治療'],desc:'基礎牙周病治療，將牙根上的牙結石刮除乾淨，使牙周組織發炎反應降低。'},
- {id:'srp',name:'牙根整平（健保）',cat:'健保',nhi:true,unit:'區',price:0,min:0,max:0,alias:['srp','牙根整平','sc/rp'],desc:''},
- {id:'endo',name:'根管治療（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['根管','根管治療','endo','rct'],desc:''},
- {id:'pp',name:'乳牙活髓／根管（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['pp','ppt','活髓'],desc:''},
- {id:'seal',name:'窩溝封填（健保）',cat:'健保',nhi:true,unit:'顆',price:0,min:0,max:0,alias:['seal','窩溝封填'],desc:''},
- {id:'exam',name:'口腔檢查（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['口腔檢查','exam'],desc:''},
- {id:'id',name:'切開引流（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['切開引流','i&d','引流'],desc:''},
- {id:'perioer',name:'牙周病緊急處置（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['牙周緊急','牙周病緊急'],desc:''},
- {id:'flap',name:'牙周翻瓣手術（健保）',cat:'健保',nhi:true,unit:'區',price:0,min:0,max:0,alias:['翻瓣','flap'],desc:''},
- {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
- {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
+const DEFAULT_PRICES=[ // 只有項目名稱（金額只存在診所雲端）
+ {"id":"ao4","name":"All-on-4（待選款式）","cat":"全口重建","unit":"顎","alias":["ao4","all-on-4","all on 4","allon4","一日全口"]},
+ {"id":"ao4a","name":"All-on-4 樂活款","cat":"全口重建","unit":"顎","alias":["樂活款"]},
+ {"id":"ao4b","name":"All-on-4 精緻款","cat":"全口重建","unit":"顎","alias":["精緻款"]},
+ {"id":"ao4c","name":"All-on-4 尊爵款","cat":"全口重建","unit":"顎","alias":["尊爵款"]},
+ {"id":"ao4d","name":"All-on-4 極致款","cat":"全口重建","unit":"顎","alias":["極致款"]},
+ {"id":"ao4imp","name":"All-on-4 增加植體","cat":"全口重建","unit":"支","alias":["增加植體"]},
+ {"id":"zygoma","name":"顴骨植體","cat":"全口重建","unit":"支","alias":["顴骨","zygoma"]},
+ {"id":"allon6","name":"All-on-6","cat":"全口重建","unit":"顎","alias":["ao6","all-on-6","all on 6","allon6"]},
+ {"id":"imp","name":"植牙","cat":"植牙","unit":"顆","alias":["植牙","植體","implant","imp"]},
+ {"id":"impup","name":"升級陶瓷支台零件","cat":"植牙","unit":"顆","alias":["陶瓷支台","升級支台"]},
+ {"id":"guide","name":"電腦定位導引板","cat":"植牙","unit":"顎","alias":["導引板","導板","stent","surgical guide"]},
+ {"id":"graft","name":"人工補骨手術","cat":"植牙","unit":"區","alias":["補骨","gbr","骨粉","人工骨","bone graft"]},
+ {"id":"sinus","name":"鼻竇增高手術","cat":"植牙","unit":"區","alias":["鼻竇","sinus","上顎竇","sinus lift"]},
+ {"id":"auto","name":"自體骨移植","cat":"植牙","unit":"區","alias":["自體骨","自體補骨"]},
+ {"id":"bba","name":"骨塊移植（Onlay graft）","cat":"植牙","unit":"區","alias":["bba","onlay graft","骨塊"]},
+ {"id":"prf","name":"生長因子 PRF／CGF","cat":"植牙","unit":"次","alias":["prf","cgf","生長因子"]},
+ {"id":"periimp","name":"植體周圍炎治療","cat":"植牙","unit":"顆","alias":["植體周圍炎","peri-implantitis"]},
+ {"id":"bridge","name":"牙橋假牙","cat":"贗復","unit":"顆","alias":["牙橋","br","fpd","bridge"]},
+ {"id":"crown","name":"假牙（牙冠）","cat":"贗復","unit":"顆","alias":["假牙","牙冠","crown","全瓷冠","全鋯冠","cr","pfm","zr","牙套"]},
+ {"id":"post","name":"玻璃纖維釘柱","cat":"贗復","unit":"顆","alias":["牙釘","post core","樁柱","釘柱","柱心"]},
+ {"id":"tempcr","name":"臨時假牙","cat":"贗復","unit":"顆","alias":["臨時假牙","temp"]},
+ {"id":"onlay","name":"3D 齒雕（全瓷嵌體）","cat":"贗復","unit":"顆","alias":["齒雕","嵌體","onlay","inlay"]},
+ {"id":"veneer","name":"陶瓷貼片","cat":"美白","unit":"顆","alias":["貼片","veneer","lv"]},
+ {"id":"resin","name":"美學樹脂填補","cat":"贗復","unit":"顆","alias":["美學樹脂","樹脂貼片"]},
+ {"id":"apico","name":"根尖手術","cat":"顯微根管","unit":"顆","alias":["根尖手術","apico","apicoectomy"]},
+ {"id":"vpt","name":"活髓治療","cat":"顯微根管","unit":"顆","alias":["活髓治療","vpt","活隨"]},
+ {"id":"rpd","name":"正式活動假牙（全口）","cat":"活動假牙","unit":"顎","alias":["活動假牙","cd","全口活動假牙"]},
+ {"id":"rpdp","name":"正式活動假牙（局部）","cat":"活動假牙","unit":"顎","alias":["局部活動假牙","rpd"]},
+ {"id":"overd2","name":"鈕扣式植體假牙（2 支植體）","cat":"活動假牙","unit":"顎","alias":["鈕扣式","overdenture","覆蓋假牙","植體支撐"]},
+ {"id":"overd3","name":"鈕扣式植體假牙（3 支植體）","cat":"活動假牙","unit":"顎","alias":[]},
+ {"id":"overd4","name":"鈕扣式植體假牙（4 支植體）","cat":"活動假牙","unit":"顎","alias":[]},
+ {"id":"temprpd","name":"臨時活動假牙（全口）","cat":"活動假牙","unit":"顎","alias":["臨時活動假牙","interim denture","interm denture","id"]},
+ {"id":"temprpdp","name":"臨時活動假牙（局部）","cat":"活動假牙","unit":"顎","alias":["局部臨時活動假牙"]},
+ {"id":"clasp","name":"夾扣式假牙","cat":"活動假牙","unit":"顆","alias":["夾扣","小螃蟹"]},
+ {"id":"micro","name":"顯微鏡根管治療","cat":"顯微根管","unit":"顆","alias":["顯微根管","micro","顯微","re-endo","重新根管","重新做endo","重做endo","重新做根管"]},
+ {"id":"microfill","name":"特殊根管修補材料","cat":"顯微根管","unit":"顆","alias":["修補材料","mta"]},
+ {"id":"micropost","name":"顯微鏡拆除牙釘柱","cat":"顯微根管","unit":"顆","alias":["拆牙釘","拆釘","拆除牙釘","post removal"]},
+ {"id":"sandbl","name":"噴砂美白（局部）","cat":"美白","unit":"次","alias":["噴砂美白"]},
+ {"id":"bleach","name":"冷光美白","cat":"美白","unit":"次","alias":["冷光美白","冷光"]},
+ {"id":"homebl","name":"居家美白","cat":"美白","unit":"組","alias":["居家美白"]},
+ {"id":"laser","name":"全口水雷射牙周治療","cat":"牙周","unit":"次","alias":["水雷射","waterlase","laser","雷射"]},
+ {"id":"gtr","name":"牙周組織再生手術","cat":"牙周","unit":"區","alias":["gtr","再生"]},
+ {"id":"cl","name":"牙冠增長術","cat":"牙周","unit":"顆","alias":["牙冠增長","clp"]},
+ {"id":"gingiva","name":"牙周微整形（牙齦覆蓋／增厚）","cat":"牙周","unit":"區","alias":["牙齦整形","美學牙齦","牙齦覆蓋","牙齦增厚"]},
+ {"id":"ctg","name":"結締組織移植","cat":"牙周","unit":"區","alias":["ctg","結締組織","軟組織"]},
+ {"id":"fgg","name":"FGG 游離牙齦移植","cat":"牙周","unit":"區","alias":["fgg","游齦","游離牙齦"]},
+ {"id":"apf","name":"牙齦根向復位瓣 APF","cat":"牙周","unit":"區","alias":["apf"]},
+ {"id":"ems","name":"舒適潔牙 EMS（基礎維護）","cat":"潔牙","unit":"次","alias":["ems","ems洗牙","舒適潔牙","airflow"]},
+ {"id":"emsplus","name":"精準噴砂（升級保養）","cat":"潔牙","unit":"次","alias":["精準噴砂","噴砂"]},
+ {"id":"impcare","name":"植體照護深度清潔","cat":"潔牙","unit":"顆","alias":["植體照護","植體清潔"]},
+ {"id":"ortho","name":"成人矯正（待選款式）","cat":"成人矯正","unit":"次","alias":["成人矯正","矯正"]},
+ {"id":"orthotrad","name":"傳統矯正","cat":"成人矯正","unit":"次","alias":["傳統矯正","傳統"]},
+ {"id":"orthodamon","name":"戴蒙矯正","cat":"成人矯正","unit":"次","alias":["戴蒙","damon"]},
+ {"id":"orthoinv","name":"隱適美","cat":"成人矯正","unit":"次","alias":["隱適美","inv","invisalign","隱形矯正"]},
+ {"id":"orthog","name":"正顎手術","cat":"成人矯正","unit":"次","alias":["正顎","orthognathic"]},
+ {"id":"orthopart","name":"局部矯正（扶正）","cat":"成人矯正","unit":"顆","alias":["局部矯正","扶正"]},
+ {"id":"tad","name":"矯正用骨釘","cat":"成人矯正","unit":"支","alias":["骨釘","tad","mia","迷你骨釘"]},
+ {"id":"retainer","name":"維持器","cat":"成人矯正","unit":"顎","alias":["維持器","retainer"]},
+ {"id":"orthoext","name":"矯正拔牙","cat":"成人矯正","unit":"顆","alias":["矯正拔牙"]},
+ {"id":"orthodata","name":"矯正資料收集","cat":"成人矯正","unit":"次","alias":["矯正資料","矯正資料收集","矯正資料蒐集"]},
+ {"id":"kidmyo","name":"兒童輕矯正","cat":"兒童矯正","unit":"副","alias":["輕矯正","肌功能"]},
+ {"id":"kidexp","name":"牙弓擴張器","cat":"兒童矯正","unit":"顎","alias":["擴張器","擴弓"]},
+ {"id":"biteplane","name":"咬合斜板","cat":"兒童矯正","unit":"副","alias":["咬合斜板","斜板"]},
+ {"id":"kidtrad","name":"兒童傳統矯正","cat":"兒童矯正","unit":"次","alias":["兒童傳統矯正","兒童矯正"]},
+ {"id":"kidinv","name":"兒童隱適美","cat":"兒童矯正","unit":"次","alias":["兒童隱適美"]},
+ {"id":"kidcrown","name":"前牙樹脂牙套","cat":"兒童牙科","unit":"顆","alias":["樹脂牙套","乳牙樹脂冠","樹脂冠"]},
+ {"id":"kidveneer","name":"乳牙貼片不鏽鋼牙套","cat":"兒童牙科","unit":"顆","alias":["貼片不鏽鋼"]},
+ {"id":"kidzr","name":"兒童白色瓷牙套","cat":"兒童牙科","unit":"顆","alias":["白色瓷牙套","瓷牙套"]},
+ {"id":"kiddent","name":"兒童假牙組","cat":"兒童牙科","unit":"組","alias":["兒童假牙"]},
+ {"id":"ssc","name":"兒童金屬牙套 SSC","cat":"兒童牙科","unit":"顆","alias":["ssc","不鏽鋼牙冠","金屬牙套"]},
+ {"id":"kidssc","name":"恆牙不鏽鋼牙套","cat":"兒童牙科","unit":"顆","alias":["恆牙不鏽鋼"]},
+ {"id":"sealpay","name":"自費溝隙封填","cat":"兒童牙科","unit":"顆","alias":["自費溝隙封填","自費封填"]},
+ {"id":"fluor","name":"自費塗氟","cat":"兒童牙科","unit":"次","alias":["塗氟","fluoride","tfa"]},
+ {"id":"space","name":"空間維持器（單側）","cat":"兒童牙科","unit":"組","alias":["空間維持器"]},
+ {"id":"space2","name":"空間維持器（雙側）","cat":"兒童牙科","unit":"組","alias":["雙側空間維持器"]},
+ {"id":"splinth","name":"咬合板","cat":"TMJ","unit":"副","alias":["硬式咬合板","咬合板","splint"]},
+ {"id":"splints","name":"咬合板（軟式）","cat":"TMJ","unit":"副","alias":["軟式咬合板"]},
+ {"id":"tmjha","name":"關節玻尿酸沖洗／注射（一側）","cat":"TMJ","unit":"側","alias":["玻尿酸","關節沖洗"]},
+ {"id":"botox","name":"肉毒桿菌注射（咬肌、磨牙）","cat":"TMJ","unit":"次","alias":["肉毒","botox"]},
+ {"id":"snore","name":"止鼾牙套","cat":"TMJ","unit":"副","alias":["止鼾"]},
+ {"id":"tmj","name":"顳顎關節治療","cat":"TMJ","unit":"次","alias":["tmj","顳顎"]},
+ {"id":"col","name":"骨膠原蛋白","cat":"口外","unit":"顆","alias":["膠原蛋白","膠原","膠球","gelfoam","骨膠原"]},
+ {"id":"alveo","name":"齒槽骨整形","cat":"口外","unit":"區","alias":["齒槽骨整形","骨整形","alveoloplasty"]},
+ {"id":"ext","name":"拔牙（健保）","cat":"健保","nhi":true,"unit":"顆","alias":["拔牙","拔除","拔","ext","extraction"]},
+ {"id":"wisdom","name":"智齒拔除（阻生齒手術）（健保）","cat":"健保","nhi":true,"unit":"顆","alias":["智齒","阻生齒","3rd"]},
+ {"id":"sc","name":"洗牙（健保）","cat":"健保","nhi":true,"unit":"次","alias":["洗牙","sc","scaling","fmsc","fm scaling","定檢"]},
+ {"id":"od","name":"補牙（健保）","cat":"健保","nhi":true,"unit":"顆","alias":["補牙","od","充填","rest","蛀牙"]},
+ {"id":"perio","name":"牙周統合照護（健保）","cat":"健保","nhi":true,"unit":"次","alias":["牙統","牙周統合","charting","perio","p1","p2","p3","牙周治療"]},
+ {"id":"srp","name":"牙根整平（健保）","cat":"健保","nhi":true,"unit":"區","alias":["srp","牙根整平","sc/rp"]},
+ {"id":"endo","name":"根管治療（健保）","cat":"健保","nhi":true,"unit":"顆","alias":["根管","根管治療","endo","rct"]},
+ {"id":"pp","name":"乳牙活髓／根管（健保）","cat":"健保","nhi":true,"unit":"顆","alias":["pp","ppt","活髓"]},
+ {"id":"seal","name":"窩溝封填（健保）","cat":"健保","nhi":true,"unit":"顆","alias":["seal","窩溝封填"]},
+ {"id":"exam","name":"口腔檢查（健保）","cat":"健保","nhi":true,"unit":"次","alias":["口腔檢查","exam"]},
+ {"id":"id","name":"切開引流（健保）","cat":"健保","nhi":true,"unit":"次","alias":["切開引流","i&d","引流"]},
+ {"id":"perioer","name":"牙周病緊急處置（健保）","cat":"健保","nhi":true,"unit":"次","alias":["牙周緊急","牙周病緊急"]},
+ {"id":"flap","name":"牙周翻瓣手術（健保）","cat":"健保","nhi":true,"unit":"區","alias":["翻瓣","flap"]},
+ {"id":"fren","name":"繫帶切除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["繫帶","frenectomy"]},
+ {"id":"cyst","name":"囊腫摘除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["囊腫","cyst"]}
 ];
-const APP_VER='10/08 18:40';
+const APP_VER='10/08 20:30';
+const BUILD=202610082030; // 年月日時分，用來判斷「比較新」的版本
 const SYNC_VER=3; // 雲端用來擋掉舊版程式上傳
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
@@ -408,15 +396,12 @@ const MKT={none:{label:'無',off:0},teach:{label:'AO4 教學專案',off:50000},m
 /* ========= 狀態 ========= */
 let S=load();
 (function migrate(){S.itemImgs=S.itemImgs||{};
-  if(S.priceBase!==PRICE_VER&&!S.priceApprover){const custom=(S.prices||[]).filter(x=>!DEFAULT_PRICES.some(d=>d.id===x.id)&&/^c\d/.test(x.id));
-    if(S.prices&&S.prices.length){S.priceVersions=S.priceVersions||[];S.priceVersions.unshift({ver:S.priceBase||'舊版',date:new Date().toLocaleDateString('zh-TW'),by:'系統',note:'升級前自動備份',prices:S.prices})}
-    S.prices=JSON.parse(JSON.stringify(DEFAULT_PRICES)).concat(custom);S.priceBase=PRICE_VER;S.priceDate=S.priceDate||new Date().toLocaleDateString('zh-TW')}
 })();
 let V={name:'login'};
 let tmp={};
 function blank(){return {users:[],me:null,patients:[],prices:JSON.parse(JSON.stringify(DEFAULT_PRICES)),seq:1}}
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.users)return s}catch(e){}return blank()}
-function save(){localSave();queueSync()}
+function save(){localSave();if(syncOn()&&!syncSt.dirtyAt)syncSt.dirtyAt=Date.now();queueSync();setTimeout(paintSync,0)}
 function localSave(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){modal(`<h2 style="color:var(--bad)">⚠ 手機空間已滿，剛剛的修改沒有存起來</h2><p>請先到「設定」按「匯出備份」，再移除已完成病人的照片，或刪除測試用的病人。</p><div class="row"><button class="btn pri grow" onclick="closeModal();go('settings')">前往設定</button></div>`)}}
 function usage(){let n=0;try{n=(localStorage.getItem(KEY)||'').length}catch(e){}return {mb:n*2/1048576,pct:Math.min(100,Math.round(n/5e6*100))}}
 const me=()=>S.users.find(u=>u.acc===S.me);
@@ -434,7 +419,7 @@ const isLower=t=>Math.floor(t/10)>=3;
 const priceOf=id=>S.prices.find(x=>x.id===id)||DEFAULT_PRICES.find(x=>x.id===id);
 /* ===== Google 雲端同步 ===== */
 const SYNC_KEY='lw-sync',SHADOW_KEY='lw-shadow';
-const KV_KEYS=['users','mkt','prices','priceFile','priceBase','priceDate','priceBy','priceApprover','priceDraft','priceVersions','itemImgs','roster','editor','trash','delLog'];
+const KV_KEYS=['secrets','users','mkt','prices','priceFile','priceBase','priceDate','priceBy','priceApprover','priceDraft','priceVersions','itemImgs','roster','editor','trash','delLog'];
 let SY=(()=>{try{return JSON.parse(localStorage.getItem(SYNC_KEY))||{}}catch(e){return {}}})();
 // SHADOW：每筆資料「上次和雲端一致時」的指紋（很小）；完整內容存在 IndexedDB（BASE），衝突時用來合併
 let SHADOW=(()=>{try{return JSON.parse(localStorage.getItem(SHADOW_KEY))||{}}catch(e){return {}}})();
@@ -468,7 +453,7 @@ function I(s){if(!s)return '';if(!String(s).startsWith('img:'))return s;const id
 async function loadImgs(){const ids=[...IMG_WAIT].filter(id=>!IMGC[id]);IMG_WAIT.clear();for(let k=0;k<ids.length;k+=8){const part=ids.slice(k,k+8);try{const r=await api({action:'getimg',ids:part});for(const [id,d] of Object.entries(r.imgs||{}))if(d){IMGC[id]=d;document.querySelectorAll(`img[src="${BLANK}#img:${id}"]`).forEach(el=>el.src=d)}}catch(e){}}}
 async function imgData(s){if(!s||!String(s).startsWith('img:'))return s;const id=s.slice(4);if(!IMGC[id]){const r=await api({action:'getimg',ids:[id]});if(r.imgs&&r.imgs[id])IMGC[id]=r.imgs[id]}return IMGC[id]||''}
 async function api(body){
-  const r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:SY.token,ver:SYNC_VER},body))});
+  let r;try{r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:SY.token,ver:SYNC_VER},body))})}catch(e){throw new Error(navigator.onLine===false?'這台目前沒有網路':'連不上診所雲端，請確認網路')}
   const j=await r.json();if(!j.ok){if(j.old)checkVersion(true);throw new Error(j.err||'雲端錯誤')}return j;
 }
 function recs(){const out=S.patients.map(p=>({col:'p',id:p.id,obj:p,name:p.name}));for(const k of KV_KEYS)if(S[k]!==undefined)out.push({col:'kv',id:k,obj:S[k],name:k});return out}
@@ -496,13 +481,19 @@ function mergeArr(b,l,r){
   l.forEach((x,i)=>{const k=kl[i];if(seen.has(k))return;if(B.has(k)&&!R.has(k)){if(!sameJ(B.get(k),x))out.push(x)}else out.push(x)});
   return out;
 }
-function mergeUsers(b,l,r){ // 帳號只合併、不因同步而刪除；同一個帳號兩邊都改 → 欄位合併
+function codeHash(salt,v){let h=salt+'|'+String(v||'').trim();for(let i=0;i<500;i++)h=hash(h+i);return h}
+function pwOk(kind,v){const c=(S.secrets||{})[kind];return !!(c&&c.h&&codeHash(c.salt,v)===c.h)}
+const pwSet=kind=>!!((S.secrets||{})[kind]||{}).h;
+function stampUser(u){u.setAt=Date.now();u.setBy=me()?me().name:''}
+const AUTH_F=['role','link','priceEdit','disabled','setAt','setBy']; // 由管理員設定的欄位：以最新一次設定為準
+function mergeUser(b,l,r){const m=merge3(b,l,r)||{};const src=(l.setAt||0)>(r.setAt||0)?l:r;for(const f of AUTH_F){if(src[f]===undefined)delete m[f];else m[f]=src[f]}return m}
+function mergeUsers(b,l,r){ // 帳號只合併、不會因為同步而減少
   const B=new Map((Array.isArray(b)?b:[]).map(x=>[x.acc,x])),L=new Map(l.map(x=>[x.acc,x]));const out=[],seen=new Set();
-  for(const x of r){seen.add(x.acc);out.push(L.has(x.acc)?merge3(B.get(x.acc),L.get(x.acc),x):x)}
-  for(const x of l)if(!seen.has(x.acc))out.push(x);
+  for(const x of r){if(!x||!x.acc||seen.has(x.acc))continue;seen.add(x.acc);out.push(L.has(x.acc)?mergeUser(B.get(x.acc),L.get(x.acc),x):x)}
+  for(const x of l)if(x&&x.acc&&!seen.has(x.acc)){seen.add(x.acc);out.push(x)}
   return out;
 }
-function applyRemote(row){
+function applyRemote(row,opts={}){
   const key=row.col+':'+row.id;
   if(!row.deleted&&SHADOW[key]===sig(row.json))return false; // 已經是這個版本（多半是自己剛上傳的）
   let cur,set;
@@ -510,49 +501,79 @@ function applyRemote(row){
     set=v=>{const j=S.patients.findIndex(p=>p.id===row.id);if(v===undefined){if(j>=0)S.patients.splice(j,1)}else if(j>=0)S.patients[j]=v;else S.patients.unshift(v)}}
   else if(row.col==='kv'&&KV_KEYS.includes(row.id)){cur=S[row.id];set=v=>{if(v===undefined)delete S[row.id];else S[row.id]=v}}
   else return false;
+  const isUsers=row.id==='users'&&row.col==='kv';
+  if(isUsers&&row.deleted)return false; // 帳號名單永遠不刪
   const lj=cur===undefined?undefined:JSON.stringify(cur);
-  const dirty=lj!==undefined&&SHADOW[key]!==sig(lj);
+  // 這台的修改還沒上傳 → 要合併；kv 設定在這台從沒同步過（例如剛連線的空白預設）→ 以雲端為準
+  let dirty=lj!==undefined&&SHADOW[key]!==sig(lj);
+  if(dirty&&row.col==='kv'&&SHADOW[key]===undefined&&!opts.force&&!isUsers&&(!SY.ok||sameJ(cur,blank()[row.id])))dirty=false;
   if(row.deleted){if(!dirty)set(undefined);delBase(key);return true} // 這台有改過 → 保留，之後再上傳
   const remote=JSON.parse(row.json);
-  if(!dirty){if(row.id==='users'&&Array.isArray(cur)&&Array.isArray(remote)){const ra=new Set(remote.map(x=>x.acc));set(remote.concat(cur.filter(x=>!ra.has(x.acc))))}else set(remote)}
-  else{const bj=BASE.get(key);const base=bj?JSON.parse(bj):undefined;let merged=row.id==='users'&&Array.isArray(cur)&&Array.isArray(remote)?mergeUsers(base,cur,remote):merge3(base,cur,remote);
+  if(isUsers&&Array.isArray(remote)){const loc=Array.isArray(cur)?cur:[];const bj=BASE.get(key);set(mergeUsers(dirty&&bj?JSON.parse(bj):(dirty?undefined:loc),loc,remote))}
+  else if(!dirty)set(remote);
+  else{const bj=BASE.get(key);const base=bj?JSON.parse(bj):undefined;let merged=merge3(base,cur,remote);
     if((row.id==='delLog'||row.id==='trash')&&Array.isArray(merged))merged.sort((a,b)=>(b.at||0)-(a.at||0));
     set(merged)}
   setBase(key,row.json);return true;
 }
+function pendingInfo(){ // 這台還沒存到雲端的資料
+  if(!syncOn())return {n:0,names:[]};const names=[];let n=0;const seen=new Set();
+  for(const x of recs()){const key=x.col+':'+x.id;seen.add(key);if(SHADOW[key]!==sig(JSON.stringify(x.obj))){n++;if(names.length<8)names.push(x.col==='p'?x.name:KV_LABEL[x.id]||x.id)}}
+  for(const key of Object.keys(SHADOW))if(key.startsWith('p:')&&!seen.has(key)){n++;if(names.length<8)names.push('刪除的病人')}
+  return {n,names};
+}
+const KV_LABEL={secrets:'註冊碼／刪除密碼',users:'人員帳號',mkt:'行銷 case',prices:'價目表',priceDraft:'價目表草稿',priceVersions:'價目表歷史',itemImgs:'項目圖片',roster:'班表',editor:'剪輯排程',trash:'最近刪除',delLog:'刪除紀錄',priceFile:'價目表原始檔'};
 async function syncNow(opts={}){
-  if(!syncOn())return;if(syncSt.busy){syncSt.again=true;return}
+  if(!syncOn())return;
+  if(SY.forcePending)opts=Object.assign({},opts,{force:true,full:true});
+  if(syncSt.busy){const a=typeof syncSt.again==='object'?syncSt.again:{};if(opts.force)a.force=true;if(opts.full)a.full=true;syncSt.again=a;return}
   syncSt.busy=true;syncSt.err='';paintSync();
   try{
     await baseReady;
     // 1. 拉雲端（since 只依「拉下來的」時間前進，避免漏掉別台同時上傳的資料）
     const r=await api({action:'pull',since:opts.full?0:(SY.since||0)});let changed=false;
-    for(const row of r.rows.sort((a,b)=>a.ts-b.ts))if(applyRemote(row))changed=true;
-    SY.since=Math.max(opts.full?0:(SY.since||0),r.ts||0);saveSY();
+    for(const row of r.rows.sort((a,b)=>a.ts-b.ts))if(applyRemote(row,opts))changed=true;
+    SY.since=Math.max(opts.full?0:(SY.since||0),r.ts||0);if(r.backup)SY.backup=r.backup;saveSY();
+    const before=SY.since;
     // 2. 推本機（分批，大量匯入也不會逾時）
     const ch=[];const seen=new Set();
     for(const x of recs()){const key=x.col+':'+x.id;seen.add(key);if(await uploadImgs(x.obj,x.name))changed=true;const j=JSON.stringify(x.obj);if(SHADOW[key]!==sig(j))ch.push({col:x.col,id:x.id,json:j,key})}
     for(const key of Object.keys(SHADOW))if(key.startsWith('p:')&&!seen.has(key))ch.push({col:'p',id:key.slice(2),deleted:true,key});
-    const by=me()?me().name:'';
+    const by=me()?me().name:'';let lastTs=0;
     for(let k=0;k<ch.length;){let n=0,size=0;while(k+n<ch.length&&n<100&&size<1.5e6){size+=(ch[k+n].json||'').length;n++}
       const part=ch.slice(k,k+n);if(ch.length>100){syncSt.prog=`上傳中 ${k}/${ch.length}`;paintSync()}
-      await api({action:'push',by,changes:part.map(c=>({col:c.col,id:c.id,json:c.json,deleted:c.deleted}))});
+      const res=await api({action:'push',by,changes:part.map(c=>({col:c.col,id:c.id,json:c.json,deleted:c.deleted}))});lastTs=Math.max(lastTs,res.ts||0);part.forEach(c=>c.bts=res.ts||0);
       for(const c of part){if(c.deleted)delBase(c.key);else setBase(c.key,c.json)}saveShadow();k+=n}
-    syncSt.prog='';syncSt.at=Date.now();SY.ok=Date.now();saveSY();saveShadow();localSave();flushBase();
+    // 3. 讀回雲端核對：剛剛上傳的每一筆，雲端上真的是這個內容
+    if(ch.length){syncSt.prog='核對雲端中…';paintSync();
+      const r2=await api({action:'pull',since:before});const got={};for(const row of r2.rows)got[row.col+':'+row.id]=row;
+      const bad=ch.filter(c=>{const row=got[c.key];if(!row)return true;if(c.bts&&row.ts>c.bts)return false;if(c.key==='kv:users'){try{const acc=new Set(JSON.parse(row.json).map(u=>u.acc));return JSON.parse(c.json).some(u=>!acc.has(u.acc))}catch(e){return true}}return c.deleted?!row.deleted:(row.deleted||sig(row.json)!==sig(c.json))});
+      for(const row of r2.rows.sort((a,b)=>a.ts-b.ts))if(applyRemote(row,opts))changed=true;
+      SY.since=Math.max(SY.since,r2.ts||0);
+      if(bad.length){bad.forEach(c=>delete SHADOW[c.key]);throw new Error(`雲端核對有 ${bad.length} 筆不一致，會自動重新上傳`)}
+      syncSt.verified={at:Date.now(),n:ch.length}}
+    syncSt.prog='';syncSt.at=Date.now();SY.ok=Date.now();if(opts.force){SY.forcePending=0;syncSt.forceDone={at:Date.now(),n:ch.length}}saveSY();saveShadow();localSave();flushBase();
     if(changed&&!opts.quiet)softRender();
-  }catch(e){syncSt.err=e.message||String(e);syncSt.prog=''}
-  syncSt.busy=false;paintSync();
-  if(syncSt.again){syncSt.again=false;setTimeout(()=>syncNow({quiet:true}),300)}
+  }catch(e){syncSt.err=e.message||String(e);syncSt.prog='';saveShadow()}
+  syncSt.busy=false;const pi=pendingInfo();if(!pi.n)syncSt.dirtyAt=0;else if(!syncSt.dirtyAt)syncSt.dirtyAt=Date.now();paintSync();
+  if(syncSt.again){const a=typeof syncSt.again==='object'?syncSt.again:{};syncSt.again=false;setTimeout(()=>syncNow(Object.assign({quiet:true},a)),300)}
+  else if(syncSt.err&&pi.n&&!syncSt.retry){syncSt.retry=setTimeout(()=>{syncSt.retry=null;syncNow({quiet:true})},20000)}
 }
 // 自動更新：發現網站有新版本就重新整理（保留連線網址）
 let verBusy=false;
 async function checkVersion(force){
   if(verBusy||location.protocol==='file:')return;verBusy=true;
-  try{const t=await (await fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'})).text();const m=t.match(/const APP_VER='([^']+)'/);
-    if(m&&m[1]!==APP_VER){let tried='';try{tried=sessionStorage.getItem('lw-upd')||''}catch(e){}
-      if(tried!==m[1]){try{sessionStorage.setItem('lw-upd',m[1])}catch(e){}const u=new URL(location.href);u.searchParams.set('v',Date.now().toString(36));
+  try{const t=await (await fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'})).text();const m=t.match(/const BUILD=(\d+)/);
+    if(m&&+m[1]>BUILD){ // 只往「比較新」的版本更新
+      let st=null;try{st=JSON.parse(localStorage.getItem('lw-upd')||'null')}catch(e){st=undefined}
+      if(st===undefined){verBusy=false;return} // 無法記錄嘗試次數 → 不自動重整，避免一直重整
+      if(!st||st.b!==+m[1])st={b:+m[1],n:0,at:0};
+      if(st.n<5&&Date.now()-st.at>(st.n?10*60000:0)){
         const busy=()=>{const a=document.activeElement;return a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)||document.getElementById('modal')};
-        if(force||!busy()){localSave();location.replace(u.toString())}else{toast('有新版本，存檔後會自動更新');setTimeout(()=>{verBusy=false;checkVersion()},20000);return}}}}
+        if(!force&&busy()){toast('有新版本，存檔後會自動更新');setTimeout(()=>{verBusy=false;checkVersion()},20000);return}
+        st.n++;st.at=Date.now();try{localStorage.setItem('lw-upd',JSON.stringify(st))}catch(e){verBusy=false;return}
+        localSave();const u=new URL(location.href);u.searchParams.set('v',m[1]+'-'+st.n);location.replace(u.toString());return}
+    }}
   catch(e){}verBusy=false;
 }
 setTimeout(checkVersion,3000);setInterval(checkVersion,10*60000);
@@ -560,7 +581,16 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 function softRender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)||document.getElementById('modal')){syncSt.pendingRender=true;return}render()}
 document.addEventListener('focusout',()=>{if(syncSt.pendingRender){setTimeout(()=>{const a=document.activeElement;if(!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))&&!document.getElementById('modal')){syncSt.pendingRender=false;render()}},400)}});
 function queueSync(){if(!syncOn())return;clearTimeout(syncSt.timer);syncSt.timer=setTimeout(()=>syncNow({quiet:true}),1500)}
-function paintSync(){const el=document.getElementById('syncdot');if(!el)return;el.className='syncdot '+(syncSt.err?'bad':syncSt.busy?'busy':'ok');el.title=syncSt.err?'同步失敗：'+syncSt.err:syncSt.busy?(syncSt.prog||'同步中…'):'已同步 '+(syncSt.at?new Date(syncSt.at).toTimeString().slice(0,5):'')}
+function paintSync(){
+  const pi=pendingInfo();const old=syncSt.dirtyAt&&Date.now()-syncSt.dirtyAt>60000;
+  const st=syncSt.err?'bad':syncSt.busy?'busy':pi.n?'busy':'ok';
+  const txt=syncSt.busy?(syncSt.prog||'同步中…'):syncSt.err?'⚠ 同步失敗':pi.n?`⏳ ${pi.n} 筆未上傳`:'✓ '+(syncSt.verified&&Date.now()-syncSt.verified.at<15000?'已存到雲端':'已同步')+(syncSt.at?' '+new Date(syncSt.at).toTimeString().slice(0,5):'');
+  document.querySelectorAll('#syncdot,.syncdot2').forEach(el=>{el.className=(el.id==='syncdot'?'syncdot ':'syncdot syncdot2 ')+st;el.title=syncSt.err?'同步失敗：'+syncSt.err:txt});
+  const c=document.getElementById('syncchip');if(c){c.className='syncchip '+st;c.textContent=txt}
+  const w=document.getElementById('syncwarn');if(w){const show=syncOn()&&pi.n&&old;
+    w.innerHTML=show?`<div class="syncwarn" onclick="act.syncInfo()"><b>⚠ 你的修改還沒存到雲端</b>（${pi.n} 筆，已超過 ${Math.max(1,Math.round((Date.now()-syncSt.dirtyAt)/60000))} 分鐘）${syncSt.err?'：'+h(syncSt.err):''}<br><span>請確認網路，按這裡查看並重試。在存好以前請不要關掉 app。</span></div>`:''}
+}
+setInterval(()=>{if(syncOn())paintSync()},15000);
 setInterval(()=>{if(syncOn()&&document.visibilityState==='visible')syncNow()},45000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&syncOn())syncNow()});
 function readLink(str){try{const [u,t]=decodeURIComponent(escape(atob(str))).split('|');return u&&t?{url:u,token:t}:null}catch(e){return null}}
@@ -577,8 +607,8 @@ function syncCard(){
   if(me().role!=='管理員')return `<div class="card"><h2>雲端 ${on?'<span id="syncdot" class="syncdot ok"></span>':''}</h2><p style="margin:0">${on?'已連上診所雲端'+(syncSt.at?'・最近同步 '+new Date(syncSt.at).toLocaleTimeString('zh-TW',{hour12:false}):''):'尚未連上診所雲端，請向管理員索取連線網址。'}</p>${on?'<button class="btn sm" style="margin-top:8px" onclick="syncNow().then(()=>render())">立即同步</button>':''}</div>`;
   return `<div class="card"><h2>Google 雲端同步 ${on?`<span id="syncdot" class="syncdot ok"></span>`:''}</h2>
    ${on?`<p style="margin:0 0 6px">已連上診所雲端。${syncSt.err?`<span style="color:var(--bad)">最近一次同步失敗：${h(syncSt.err)}</span>`:syncSt.at?'最近同步 '+new Date(syncSt.at).toLocaleTimeString('zh-TW',{hour12:false}):''}</p>
-     <div class="row"><button class="btn pri sm" onclick="syncNow().then(()=>render())">立即同步</button>${me().role==='管理員'?`<button class="btn sm" onclick="act.syncShare()">給同事的連線網址</button>`:''}<button class="btn sm" onclick="act.syncOff()">中斷連線</button></div>
-     <p class="muted" style="margin:6px 0 0">每 45 秒自動同步；照片存在診所雲端硬碟「立威個案管理_照片」資料夾。</p>`
+     <div class="row"><button class="btn pri sm" onclick="syncNow().then(()=>render())">立即同步</button>${me().role==='管理員'?`<button class="btn sm" onclick="act.syncShare()">給同事的連線網址</button>`:''}<button class="btn sm" onclick="act.forceSync()">強制同步：以這台為準</button><button class="btn sm" onclick="act.syncOff()">中斷連線</button></div>
+     <p class="muted" style="margin:6px 0 0">每 45 秒自動同步；照片存在診所雲端硬碟「立威個案管理_照片」資料夾。${SY.backup?'<br>雲端每日自動備份：最近一次 '+h(SY.backup)+' ✓（雲端硬碟「立威個案管理_備份」，保留 30 天）':''}</p>`
    :`<p class="muted" style="margin:0 0 6px">連上後，所有同事的資料會存在診所的 Google 試算表，照片存在雲端硬碟。</p>
      <label class="f">網頁應用程式網址</label><input class="i" id="sy-u" placeholder="https://script.google.com/macros/s/…/exec">
      <label class="f">金鑰</label><input class="i" id="sy-t" autocomplete="off">
@@ -607,9 +637,9 @@ function render(){
    <div class="sec">設定</div>${item('prices','價目表')}${item('settings','設定')}<p class="muted" style="padding:14px 12px 0;margin:0;font-size:11px">版本：${APP_VER}</p></aside>
   <div class="scrim" onclick="document.body.classList.remove('menu')"></div>
   ${syncOn()?'':'<div class="demo">尚未連上診所雲端・資料只存在這支手機・請勿輸入真實病人資料</div>'}
-  <header class="top">${syncOn()?'<span id="syncdot" class="syncdot"></span>':''}<button class="hamb" aria-label="選單" onclick="document.body.classList.add('menu')">☰</button><b>立威個案管理</b>
+  <header class="top">${syncOn()?'<button id="syncchip" class="syncchip" onclick="act.syncInfo()"></button>':''}<button class="hamb" aria-label="選單" onclick="document.body.classList.add('menu')">☰</button><b>立威個案管理</b>
     <div class="who"><strong>${h(u.name)}</strong>${h(u.role)}・<a href="#" onclick="act.logout();return false" style="color:inherit">登出</a></div></header>
-  <main>${body}</main>
+  <main><div id="syncwarn"></div>${body}</main>
   <button class="btn sm exitp" onclick="document.body.classList.remove('present')">結束展示</button>`;
   after();paintSync();
 }
@@ -1045,7 +1075,7 @@ function meetingCard(){const d=rosterToday();if(!d||!/會|訓練/.test(d.note||'
 function viewHome(){
   const td=myTodos();tmp.todo=td;const rt=rosterTodos().concat(mktTodos(),adminTodos(),priceTodos());tmp.rt=rt;
   const u=me();
-  return `<h1>今日待辦</h1>
+  return `<h1>今日待辦</h1>${me().role==='管理員'&&(!pwSet('reg')||!pwSet('del'))?`<div class="card" style="background:#FBE1DA;border-color:var(--bad)"><div class="row"><b class="grow" style="color:var(--bad)">請設定診所註冊碼與刪除密碼</b><button class="btn sm pri" onclick="go('settings');setTimeout(()=>{const e=document.getElementById('sec-codes');e&&e.scrollIntoView()},50)">前往設定</button></div><p class="muted" style="margin:4px 0 0">設定之前，新同事無法建立帳號，也無法刪除或復原資料。</p></div>`:''}
   ${usage().pct>=80&&me().role==='管理員'?`<div class="card" style="background:#FBE1DA;border-color:var(--bad)"><b style="color:var(--bad)">手機空間已用 ${usage().pct}%</b><p class="muted" style="margin:4px 0 0">請到「設定」匯出備份，並移除已完成病人的照片。</p></div>`:''}${eveningBanner()}${meetingCard()}${surgeryCard()}${shootCard()}${mktHomeCard()}${dutyCard()}
   ${rt.length?`<div class="card list">${rt.map((x,i)=>`<div class="it" ${x.to?`onclick="tmp.rt[${i}].to()"`:''}><div class="grow"><b>${h(x.t)}</b></div><span class="pill ${x.c}">提醒</span></div>`).join('')}</div>`:''}
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">${isBoss()?'全部個案提醒':'我的個案提醒'}</h2><button class="btn pri sm" onclick="go('newp')">＋新增病人</button></div>
@@ -1201,7 +1231,6 @@ function flowCards(p){
   return out;
 }
 /* ===== 刪除、備份、修改紀錄 ===== */
-const DEL_PW='2508';
 function dlBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
 const dlJSON=(o,name)=>dlBlob(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}),name+'.json');
 async function dlImgs(list,name){for(const x of list)x.src=await imgData(x.src);dlBlob(new Blob([`<!doctype html><meta charset="utf-8"><title>${h(name)}</title><body style="font-family:sans-serif;margin:16px"><h1>${h(name)}</h1><p>${today()} 備份</p>${list.map(x=>`<figure style="margin:0 0 16px"><img src="${x.src}" style="max-width:100%"><figcaption>${h(x.cap||'')}</figcaption></figure>`).join('')}</body>`],{type:'text/html'}),name+'.html')}
@@ -2070,11 +2099,20 @@ function chartSVG(p,q){
 function drawChartsInPlan(){const p=P(V.pid);const q=p&&quoteOf(p,V.v);if(!q)return;document.querySelectorAll('.chartbox').forEach(b=>b.innerHTML=chartSVG(p,q))}
 
 /* ---- 設定 ---- */
+const confirm0=()=>true;
+function codesCard(){const c=S.secrets||{};const st=k=>pwSet(k)?'<span class="pill g">已設定</span>':'<span class="pill r">尚未設定</span>';
+  return `<div class="card" id="sec-codes"><h2>註冊碼與刪除密碼</h2>
+   <p class="muted" style="margin:0 0 8px">註冊碼：新同事建立帳號時要輸入。刪除密碼：刪除、復原、放棄價目表草稿時要輸入。兩組都只存加密後的結果，程式碼和試算表裡都看不到原本的數字。${c.setBy?`<br>最近由 ${h(c.setBy)} 於 ${h(new Date(c.setAt).toLocaleString('zh-TW',{hour12:false}))} 設定。`:''}</p>
+   <div class="row"><div class="grow"><label class="f">註冊碼 ${st('reg')}</label><input class="i" id="cd-reg" inputmode="numeric" autocomplete="off" placeholder="${pwSet('reg')?'不改請留空':'至少 4 碼'}"></div>
+   <div class="grow"><label class="f">刪除密碼 ${st('del')}</label><input class="i" id="cd-del" type="password" inputmode="numeric" autocomplete="new-password" placeholder="${pwSet('del')?'不改請留空':'至少 4 碼'}"></div></div>
+   <button class="btn pri" style="margin-top:10px" onclick="act.codesSave()">儲存</button>
+   <p class="muted" style="margin:6px 0 0">兩組請設定成不一樣的數字；註冊碼可以告訴新同事，刪除密碼只給需要的人。忘記時，用管理員帳號在這裡重新設定即可。</p></div>`}
 function viewSettings(){
   const u=me();const admin=u.role==='管理員';
   return `<h1>設定</h1>${syncCard()}
-  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span></div>${admin?`${x.acc!==u.acc?`<select onchange="act.role(${js(x.acc)},this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link(${js(x.acc)},this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
-   ${admin?`<p class="muted" style="margin:8px 0 0">診所註冊碼：${REG_CODE}（正式版可在這裡更換）</p>`:''}</div>
+  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span></div>${admin?`${x.acc!==u.acc&&x.role!=='管理員'?`<select onchange="act.role(${js(x.acc)},this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link(${js(x.acc)},this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
+</div>
+  ${admin?codesCard():''}
   <div class="card"><div class="row"><div class="grow"><h2 style="margin:0">價目表</h2><span class="muted">${h(S.priceDate||'')} 起使用・${S.prices.length} 項${S.priceDraft?'・有一份'+PST[S.priceDraft.status][0]:''}</span></div><button class="btn pri sm" onclick="go('prices')">打開價目表</button></div>
    ${admin?`<label class="f">可以編輯價目表的人</label><div class="row">${S.users.filter(x=>x.role!=='管理員').map(x=>`<label style="font-size:14px"><input type="checkbox" ${x.priceEdit?'checked':''} onchange="act.prPerm(${js(x.acc)},this.checked)"> ${h(x.name)}</label>`).join('')||'<span class="muted">還沒有其他帳號</span>'}</div><p class="muted" style="margin:4px 0 0">管理員本來就可以編輯；只有「院長」角色可以審核通過。</p>`:''}</div>
   ${admin?`<div class="card"><h2>最近刪除（30 天內可復原）</h2>${(S.trash||[]).length?`<div class="list">${S.trash.map(t=>`<div class="it"><div class="grow"><b>${h(t.label)}</b><span class="muted">${new Date(t.at).toLocaleString('zh-TW',{hour12:false})}・${h(t.by)}</span></div><button class="btn sm" onclick="act.restore('${t.id}')">復原</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">沒有可復原的資料。</p>'}
@@ -2089,6 +2127,26 @@ function viewSettings(){
 
 /* ========= 動作 ========= */
 const act={
+  syncInfo(){const pi=pendingInfo();const t=x=>x?new Date(x).toLocaleTimeString('zh-TW',{hour12:false}):'—';
+    modal(`<h2>同步狀態</h2>
+     <p style="margin:0 0 6px">${syncSt.err?`<b style="color:var(--bad)">⚠ 最近一次同步失敗：${h(syncSt.err)}</b>`:pi.n?`<b style="color:#8a6a00">⏳ 這台還有 ${pi.n} 筆沒存到雲端</b>`:'<b style="color:var(--good)">✓ 這台的資料都已存到雲端</b>'}</p>
+     ${pi.n?`<p class="muted" style="margin:0 0 6px">未上傳：${pi.names.map(h).join('、')}${pi.n>pi.names.length?' 等':''}</p>`:''}
+     <p class="muted" style="margin:0">最近同步成功：${t(syncSt.at)}${syncSt.verified?`<br>最近核對：${t(syncSt.verified.at)}，${syncSt.verified.n} 筆雲端內容與這台一致 ✓`:''}${SY.backup?`<br>雲端每日備份：${h(SY.backup)} ✓`:''}<br>程式版本：${APP_VER}${navigator.onLine===false?'<br><b style="color:var(--bad)">這台目前沒有網路</b>':''}</p>
+     <div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="closeModal();syncNow().then(()=>{render();act.syncInfo()})">立即同步</button></div>`)},
+  forceSync(){modal(`<h2>強制同步：以這台為準</h2><p>會把<b>這台裝置上的全部病人、帳號和設定</b>重新上傳到診所雲端。同一筆資料兩邊不一樣時，<b>以這台為準</b>；雲端上有、這台沒有的資料會保留，不會被刪除。</p><p class="muted">只有在雲端資料不完整（例如病人不見）時使用。開始前會先自動下載一份這台的備份。</p><label class="f">刪除密碼</label><input class="i" type="password" id="fs-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doForceSync()">開始</button></div>`)},
+  async doForceSync(){if(pwSet('del')&&!pwOk('del',document.getElementById('fs-pw').value))return toast('密碼不正確');closeModal();dlJSON(S,`強制同步前自動備份_${todayISO()}`);
+    const t0=Date.now();toast('正在以這台為準重新上傳，請不要關掉頁面…');
+    for(let i=0;i<120&&syncSt.busy;i++)await new Promise(r=>setTimeout(r,500)); // 等目前的同步結束
+    resetShadow();SY.since=0;SY.forcePending=1;saveSY();await syncNow({full:true,force:true,quiet:true});
+    const d=syncSt.forceDone;toast(d&&d.at>=t0?`完成 ✓ 已上傳並核對 ${d.n} 筆`:'還沒完成：'+(syncSt.err||'同步中')+'（會自動繼續，請不要關掉頁面）');render()},
+  codesSave(){const r=document.getElementById('cd-reg').value.trim(),d=document.getElementById('cd-del').value.trim();
+    if(!r&&!d)return toast('請輸入要設定的註冊碼或刪除密碼');
+    if(r&&r.length<4||d&&d.length<4)return toast('至少要 4 碼');
+    if(r&&d&&r===d)return toast('註冊碼和刪除密碼請設定成不一樣');
+    if(r&&!d&&pwOk('del',r)||d&&!r&&pwOk('reg',d))return toast('註冊碼和刪除密碼請設定成不一樣');
+    if((!r&&!pwSet('reg'))||(!d&&!pwSet('del')))if(!confirm0())return;
+    const sec=Object.assign({},S.secrets||{});const mk=v=>{const salt=Math.random().toString(36).slice(2,10);return {salt,h:codeHash(salt,v)}};
+    if(r)sec.reg=mk(r);if(d)sec.del=mk(d);sec.setBy=me().name;sec.setAt=Date.now();S.secrets=sec;save();toast('已儲存，所有裝置同步後生效');render()},
   login(){
     const acc=document.getElementById('acc').value.trim(),pw=document.getElementById('pw').value;
     tmp.acc=acc;tmp.pw=pw;
@@ -2098,7 +2156,7 @@ const act={
     if(u){if(u.pw!==hash(pw))return toast('密碼不正確');S.me=u.acc;tmp={};save();go('home');return}
     if(!tmp.reg){tmp.reg=true;render();return}
     const code=document.getElementById('code').value.trim(),nm=document.getElementById('nm').value.trim();
-    if(code!==REG_CODE)return toast('診所註冊碼不正確');
+    if(S.users.length&&!pwOk('reg',code))return toast(pwSet('reg')?'診所註冊碼不正確':'管理員還沒設定註冊碼，請稍後再試');
     if(!nm)return toast('請填姓名');
     S.users.push({acc,pw:hash(pw),name:nm,role:S.users.length?'臨床':'管理員'});
     S.me=acc;tmp={};save();toast('帳號已建立');go('home');
@@ -2220,13 +2278,13 @@ const act={
    ${D.trash?'<p class="muted" style="margin:0">刪除後會放在「最近刪除」30 天，管理員可以復原。</p>':'<p class="muted" style="margin:0;color:var(--bad)">這項刪除後無法復原。</p>'}
    <label class="f">刪除密碼</label><input class="i" type="password" id="dk-pw" inputmode="numeric" autocomplete="off">
    <div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doDel('${kind}','${ref||''}')">確定刪除</button></div>`)},
-  async doDel(kind,ref){if(document.getElementById('dk-pw').value!==DEL_PW)return toast('密碼不正確');const keep=(document.querySelector('input[name=dk]:checked')||{}).value==='keep';const D=delInfo(kind,ref);
+  async doDel(kind,ref){if(!pwOk('del',document.getElementById('dk-pw').value))return toast('密碼不正確');const keep=(document.querySelector('input[name=dk]:checked')||{}).value==='keep';const D=delInfo(kind,ref);
     try{if(keep){toast('正在準備備份…');await D.backup()}}catch(e){return toast('備份失敗，沒有刪除')}
     const who=me()?me().name:'';if(D.trash){S.trash=S.trash||[];S.trash.unshift({id:'t'+Date.now(),at:Date.now(),by:who,label:D.label,kind,data:JSON.parse(JSON.stringify(D.data)),pid:D.pid||null,mid:D.mid||null})}
     D.run();if(kind!=='reset'){S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:who,label:D.label,backup:keep});if(D.pid&&P(D.pid))logP(P(D.pid),'刪除：'+D.label)}
     save();closeModal();toast(keep?'已下載備份並刪除':'已刪除');if(D.after)D.after();else render()},
   restore(id){modal(`<h2>復原</h2><p>${h((S.trash.find(x=>x.id===id)||{}).label||'')}</p><label class="f">刪除密碼</label><input class="i" type="password" id="rs-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.doRestore('${id}')">復原</button></div>`)},
-  doRestore(id){if(document.getElementById('rs-pw').value!==DEL_PW)return toast('密碼不正確');const t=S.trash.find(x=>x.id===id);if(!t)return;
+  doRestore(id){if(!pwOk('del',document.getElementById('rs-pw').value))return toast('密碼不正確');const t=S.trash.find(x=>x.id===id);if(!t)return;
     if(t.kind==='patient'){const i=S.patients.findIndex(x=>x.id===t.data.id);if(i>=0)S.patients[i]=t.data;else S.patients.unshift(t.data)}else if(t.kind==='nv'){const p=P(t.pid);if(!p)return toast('病人已不存在');p.nv=p.nv||[];p.nv.push(t.data);fixTrack(p)}else if(t.kind==='mktVisit'){const c=(S.mkt||[]).find(x=>x.id===t.mid);if(!c)return toast('行銷 case 已不存在');c.visits.push(t.data)}
     S.trash=S.trash.filter(x=>x!==t);S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:me().name,label:'復原：'+t.label,backup:true});save();closeModal();toast('已復原');render()},
   syncPaste(){const v=(document.getElementById('lk-u').value||'').trim();let m=v.match(/[?&]c=([^&#\s]+)/);let cfg=m?readLink(decodeURIComponent(m[1])):null;if(!cfg){m=v.match(/#sync=([^&\s]+)/);cfg=m?readLink(m[1]):null}if(!cfg)return toast('這不是診所的連線網址，請重新複製');applyLink(cfg);render()},
@@ -2235,7 +2293,7 @@ const act={
     SY={url:u,token:t,since:0};let r;try{r=await api({action:'pull',since:0})}catch(e){SY={};return toast('連線失敗：'+e.message)}
     if(r.rows.length){modal(`<h2>雲端已經有資料</h2><p>雲端已有 ${r.rows.filter(x=>x.col==='p'&&!x.deleted).length} 位病人。要用雲端的資料取代這支手機的資料嗎？這支手機目前的資料會先自動下載一份備份。</p><div class="row"><button class="btn grow" onclick="SY={};closeModal()">取消</button><button class="btn pri grow" onclick="act.syncAdopt()">使用雲端資料</button></div>`)}
     else{resetShadow();saveSY();toast('連線成功，正在把這支手機的資料上傳到雲端…');await syncNow();toast(syncSt.err?'上傳失敗：'+syncSt.err:'已上傳到雲端 ✓');render()}},
-  async syncAdopt(){closeModal();dlJSON(S,`連雲端前自動備份_${todayISO()}`);const meAcc=S.me;S=blank();S.me=meAcc;resetShadow();SY.since=0;saveSY();await syncNow({full:true});if(!S.users.some(u=>u.acc===S.me))S.me=null;localSave();toast(syncSt.err?'下載失敗：'+syncSt.err:'已下載雲端資料 ✓');render()},
+  async syncAdopt(){closeModal();dlJSON(S,`連雲端前自動備份_${todayISO()}`);const meAcc=S.me;S=blank();S.me=meAcc;resetShadow();SY.since=0;SY.ok=0;saveSY();await syncNow({full:true});if(!S.users.some(u=>u.acc===S.me))S.me=null;localSave();toast(syncSt.err?'下載失敗：'+syncSt.err:'已下載雲端資料 ✓');render()},
   syncShare(){const l=syncLink();modal(`<h2>給同事的連線網址</h2><p class="muted">同事用任何方式打開這個網址（LINE、Safari、Chrome、主畫面都可以）就會自動連上，再用自己的帳號登入；也可以在登入頁貼上這個網址。iPhone 建議用 Safari 打開後「加入主畫面」。<b>這個網址包含金鑰，只傳給診所同事。</b></p><textarea class="i" id="sl-t" style="min-height:90px">${h(l)}</textarea><div class="row" style="margin-top:10px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="const t=document.getElementById('sl-t');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})">複製</button></div>`)},
   syncOff(){modal(`<h2>中斷雲端連線？</h2><p class="muted">這支手機會停止同步，雲端資料不受影響。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="SY={};resetShadow();saveSY();closeModal();render()">中斷</button></div>`)},
   newQuote(pid){tmp.q2=null;tmp.editV=null;tmp.promo=false;go('orders',{pid})},
@@ -2253,7 +2311,7 @@ const act={
   prImg(id,inp){const f=inp.files[0];if(!f)return;compress(f,1000,0.65).then(d=>{const D=S.priceDraft;D.imgs=D.imgs||{};if(!Object.prototype.hasOwnProperty.call(D.imgs,id))D.imgs[id]=itemPics(id,{}).map(x=>({src:x.src,cap:x.cap}));D.imgs[id].push({src:d,cap:(D.prices.find(x=>x.id===id)||{}).name||''});save();render()})},
   prImgDel(id,j){const D=S.priceDraft;D.imgs=D.imgs||{};if(!Object.prototype.hasOwnProperty.call(D.imgs,id))D.imgs[id]=itemPics(id,{}).map(x=>({src:x.src,cap:x.cap}));D.imgs[id].splice(j,1);save();render()},
   prSubmit(){const D=S.priceDraft;const d=priceDiff(S.prices,D.prices);if(!d.add.length&&!d.del.length&&!d.chg.length&&JSON.stringify(D.imgs||{})===JSON.stringify(S.itemImgs||{}))return toast('還沒有修改任何內容');D.status='review';D.submittedBy=me().name;D.submittedAt=today();save();toast('已送院長審核');render()},
-  prDiscard(){modal(`<h2>放棄這份草稿？</h2><p class="muted">草稿裡的修改都會消失，目前上線的價目表不受影響。</p><label class="f">刪除密碼</label><input class="i" type="password" id="pd-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="if(document.getElementById('pd-pw').value!==DEL_PW)return toast('密碼不正確');S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:me().name,label:'價目表草稿',backup:false});S.priceDraft=null;save();closeModal();go('prices')">放棄草稿</button></div>`)},
+  prDiscard(){modal(`<h2>放棄這份草稿？</h2><p class="muted">草稿裡的修改都會消失，目前上線的價目表不受影響。</p><label class="f">刪除密碼</label><input class="i" type="password" id="pd-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="if(!pwOk('del',document.getElementById('pd-pw').value))return toast('密碼不正確');S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:me().name,label:'價目表草稿',backup:false});S.priceDraft=null;save();closeModal();go('prices')">放棄草稿</button></div>`)},
   prApprove(){const D=S.priceDraft;D.status='approved';D.approvedBy=me().name;D.approvedAt=today();save();toast('已核准，請負責的人按「更新上線」');render()},
   prReturn(){modal(`<h2>退回修改</h2><label class="f">要修改的地方</label><textarea class="i" id="pr-n" style="min-height:90px"></textarea><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="S.priceDraft.status='returned';S.priceDraft.retNote=document.getElementById('pr-n').value.trim();save();closeModal();render()">退回</button></div>`)},
   prPublishOpen(){const D=S.priceDraft;modal(`<h2>更新上線</h2><p>以下內容與價格會同步更新到系統（醫囑解析、報價、計畫書都會改用新價目表）。已經出過的報價和簽過的計畫書不會改變。</p><div class="card" style="max-height:40vh;overflow:auto">${diffHTML(priceDiff(S.prices,D.prices))}</div>
@@ -2263,7 +2321,7 @@ const act={
     S.prices=D.prices.filter(x=>!x.removed).map(x=>{delete x.removed;return x});S.itemImgs=D.imgs||{};S.priceDate=today();S.priceBy=me().name;S.priceApprover=D.approvedBy;S.priceDraft=null;_cand=null;save();closeModal();toast('價目表已更新上線');go('prices')},
   prFile(inp){const f=inp.files[0];if(!f)return;if(f.size>15e6)return toast('檔案太大（上限 15MB）');const fr=new FileReader();fr.onload=()=>{S.priceFile={name:f.name,src:fr.result,at:today(),by:me().name};save();toast(syncOn()?'已上傳，正在存到診所雲端…':'已上傳到這支手機');render()};fr.readAsDataURL(f)},
   async prFileOpen(w){const F=w==='cur'?S.priceFile:(S.priceVersions[w]||{}).file;if(!F)return;const win=window.open('','_blank');try{const d=await imgData(F.src);const b=await (await fetch(d)).blob();const u=URL.createObjectURL(b);if(win)win.location=u;else location.href=u}catch(e){if(win)win.close();toast('打不開檔案：'+e.message)}},
-  prPerm(acc,on){const u=S.users.find(x=>x.acc===acc);u.priceEdit=on;save();toast((on?'已開放 ':'已關閉 ')+u.name+' 編輯價目表')},
+  prPerm(acc,on){const u=S.users.find(x=>x.acc===acc);u.priceEdit=on;stampUser(u);save();toast((on?'已開放 ':'已關閉 ')+u.name+' 編輯價目表')},
   msgRead(k){const p=P(V.pid);p.msgs[k].read=true;p.msgs[k].readBy=me().name;logP(p,'已讀醫師交代');save();render()},
   lineCls(key,v){const q=tmp.q2;q.ovr=q.ovr||{};q.ovr[key]=v;tmp.q2=buildQ2(q.orders,q.ovr,q,P(V.pid));render()},
   altSet(ai,k,f,v){const i=tmp.q2.alts[ai].items[k];if(f==='price'){i.price=v===''?null:+v;i.orig=i.price;i.eval=false}else if(f==='qty')i.qty=Math.max(1,+v||1);else if(f==='teeth'){i.teeth=v.split(/[^\d]+/).filter(Boolean).map(Number).filter(n=>ORDER.includes(n));if(i.unit==='顆')i.qty=Math.max(i.teeth.length,1)}else if(f==='pid'){const r=priceOf(v);if(r)Object.assign(i,{pid:r.id,name:r.name,cat:r.cat,unit:r.unit,price:r.price,orig:r.price,list:r.price,nhi:!!r.nhi})}render()},
@@ -2343,13 +2401,13 @@ const act={
   exportAll(){dlJSON(Object.assign({},S,{me:null,_exported:new Date().toISOString()}),`立威試用資料備份_${todayISO()}`);S.lastBackup=today();save();toast('已下載備份檔');render()},
   importAll(inp){const f=inp.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{let d;try{d=JSON.parse(fr.result)}catch(e){return toast('這不是備份檔')}if(!d||!d.users||!d.patients)return toast('這不是備份檔');tmp.imp=d;
     modal(`<h2>匯入備份</h2><p>備份裡有 ${d.patients.length} 位病人、${d.users.length} 個帳號。匯入後會<b>取代</b>這支手機目前的資料（目前的資料會先自動下載一份備份）。</p><label class="f">刪除密碼</label><input class="i" type="password" id="im-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doImport()">匯入</button></div>`)};fr.readAsText(f)},
-  doImport(){if(document.getElementById('im-pw').value!==DEL_PW)return toast('密碼不正確');if(syncOn())return toast('連著診所雲端時不能匯入備份（會覆蓋全院資料），請先中斷連線');const cur=S.me;dlJSON(S,`匯入前自動備份_${todayISO()}`);S=tmp.imp;S.me=S.users.some(u=>u.acc===cur)?cur:null;tmp={};save();closeModal();toast('已匯入備份');render()},
+  doImport(){if(!pwOk('del',document.getElementById('im-pw').value))return toast('密碼不正確');if(syncOn())return toast('連著診所雲端時不能匯入備份（會覆蓋全院資料），請先中斷連線');const cur=S.me;dlJSON(S,`匯入前自動備份_${todayISO()}`);S=tmp.imp;S.me=S.users.some(u=>u.acc===cur)?cur:null;tmp={};save();closeModal();toast('已匯入備份');render()},
   finish(){const p=P(V.pid);modal(`<h2>療程完成・結案</h2><label class="f">尾款日</label><input class="i" type="date" id="fn-d" value="${todayISO()}"><input class="i" id="fn-n" placeholder="備註（選填）" style="margin-top:6px"><p class="muted">結案後會移到「已結案」。尾款日滿 30 天，系統會提醒備份並移除照片。</p><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.finishSave()">結案</button></div>`)},
   finishSave(){const p=P(V.pid);const d=document.getElementById('fn-d').value;if(!d)return toast('請選擇尾款日');p.done={pay:d,note:document.getElementById('fn-n').value.trim(),at:today(),by:me().name};p.trackDue=null;logP(p,'療程完成結案，尾款日 '+d);save();closeModal();toast('已結案');render()},
   reopen(){const p=P(V.pid);logP(p,'取消結案');delete p.done;save();render()},
   lostReport(k){const txt=`${BK[k].t}名單（${today()}）\n\n`+lostText(tmp.rl||[]);modal(`<h2>${BK[k].t}文字報表</h2><textarea class="i" id="lr-t" style="min-height:300px">${h(txt)}</textarea><div class="row" style="margin-top:10px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="const t=document.getElementById('lr-t');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})">複製</button></div>`)},
-  link(acc,v){const u=S.users.find(x=>x.acc===acc);u.link=v||undefined;save();toast('已設定 '+u.name+' 對應 '+(v||'本人姓名'));render()},
-  role(acc,r){const u=S.users.find(x=>x.acc===acc);u.role=r;save();toast('已更新 '+u.name+' 的角色')},
+  link(acc,v){const u=S.users.find(x=>x.acc===acc);u.link=v||undefined;stampUser(u);save();toast('已設定 '+u.name+' 對應 '+(v||'本人姓名'));render()},
+  role(acc,r){const u=S.users.find(x=>x.acc===acc);if(u.role==='管理員')return toast('管理員帳號受保護，不能更改角色');u.role=r;stampUser(u);save();toast('已更新 '+u.name+' 的角色')},
 };
 function modal(html){closeModal();const m=document.createElement('div');m.className='modal';m.id='modal';m.innerHTML=`<div class="sheetbox">${html}</div>`;m.onclick=e=>{if(e.target===m)closeModal()};document.body.appendChild(m)}
 function closeModal(){const m=document.getElementById('modal');if(m)m.remove()}
