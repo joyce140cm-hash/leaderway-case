@@ -127,6 +127,7 @@ details.sec[open]>summary{margin-bottom:10px}
 .ps-top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid var(--orange);padding-bottom:10px}
 .ps-cat h3{background:var(--deep);color:#fff;font-family:var(--display);letter-spacing:.12em;margin:0 0 6px;padding:6px 12px;font-size:16px}
 .ps-t{width:100%;border-collapse:collapse;font-size:12.5px}.ps-t th{background:#E8E3DE;color:var(--muted);font-weight:500;text-align:left;padding:4px 8px}.ps-t td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}.ps-t td:first-child{width:30%}.ps-t .r{text-align:right;white-space:nowrap}
+.syncdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#bbb;vertical-align:middle;margin-right:4px}.syncdot.ok{background:var(--good)}.syncdot.busy{background:#E8B400}.syncdot.bad{background:var(--bad)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px}
 .tile{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px}
 .tile b{font-family:var(--display);font-size:15px}.tile .n{font-size:28px;font-weight:700;line-height:1.1;color:var(--ink)}
@@ -365,7 +366,7 @@ const DEFAULT_PRICES=[
  {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
  {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
 ];
-const APP_VER='10/08 18:00';
+const APP_VER='10/08 19:00';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -413,7 +414,8 @@ let V={name:'login'};
 let tmp={};
 function blank(){return {users:[],me:null,patients:[],prices:JSON.parse(JSON.stringify(DEFAULT_PRICES)),seq:1}}
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.users)return s}catch(e){}return blank()}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){modal(`<h2 style="color:var(--bad)">⚠ 手機空間已滿，剛剛的修改沒有存起來</h2><p>請先到「設定」按「匯出備份」，再移除已完成病人的照片，或刪除測試用的病人。</p><div class="row"><button class="btn pri grow" onclick="closeModal();go('settings')">前往設定</button></div>`)}}
+function save(){localSave();queueSync()}
+function localSave(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){modal(`<h2 style="color:var(--bad)">⚠ 手機空間已滿，剛剛的修改沒有存起來</h2><p>請先到「設定」按「匯出備份」，再移除已完成病人的照片，或刪除測試用的病人。</p><div class="row"><button class="btn pri grow" onclick="closeModal();go('settings')">前往設定</button></div>`)}}
 function usage(){let n=0;try{n=(localStorage.getItem(KEY)||'').length}catch(e){}return {mb:n*2/1048576,pct:Math.min(100,Math.round(n/5e6*100))}}
 const me=()=>S.users.find(u=>u.acc===S.me);
 const P=id=>S.patients.find(p=>p.id===id);
@@ -427,6 +429,82 @@ function ageOf(chart){const m=/^(\d{3})(\d{2})(\d{2})/.exec(chart||'');if(!m)ret
 const isFront=t=>[1,2,3].includes(t%10);
 const isLower=t=>Math.floor(t/10)>=3;
 const priceOf=id=>S.prices.find(x=>x.id===id);
+/* ===== Google 雲端同步 ===== */
+const SYNC_KEY='lw-sync',SHADOW_KEY='lw-shadow';
+const KV_KEYS=['users','mkt','prices','priceBase','priceDate','priceBy','priceApprover','priceDraft','priceVersions','itemImgs','roster','editor','trash','delLog'];
+const MERGE_KEYS={users:'acc',delLog:'at',trash:'id'};
+let SY=(()=>{try{return JSON.parse(localStorage.getItem(SYNC_KEY))||{}}catch(e){return {}}})();
+let SHADOW=(()=>{try{return JSON.parse(localStorage.getItem(SHADOW_KEY))||{}}catch(e){return {}}})();
+const syncSt={busy:false,err:'',at:0,timer:null,again:false};
+const IMGC={};const IMG_WAIT=new Set();let imgTimer=null;
+const BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const syncOn=()=>!!(SY.url&&SY.token);
+function saveSY(){try{localStorage.setItem(SYNC_KEY,JSON.stringify(SY))}catch(e){}}
+function saveShadow(){try{localStorage.setItem(SHADOW_KEY,JSON.stringify(SHADOW))}catch(e){}}
+function I(s){if(!s)return '';if(!String(s).startsWith('img:'))return s;const id=s.slice(4);if(IMGC[id])return IMGC[id];if(syncOn()){IMG_WAIT.add(id);clearTimeout(imgTimer);imgTimer=setTimeout(loadImgs,30)}return BLANK+'#'+s}
+async function loadImgs(){const ids=[...IMG_WAIT].filter(id=>!IMGC[id]);IMG_WAIT.clear();for(let k=0;k<ids.length;k+=8){const part=ids.slice(k,k+8);try{const r=await api({action:'getimg',ids:part});for(const [id,d] of Object.entries(r.imgs||{}))if(d){IMGC[id]=d;document.querySelectorAll(`img[src="${BLANK}#img:${id}"]`).forEach(el=>el.src=d)}}catch(e){}}}
+async function imgData(s){if(!s||!String(s).startsWith('img:'))return s;const id=s.slice(4);if(!IMGC[id]){const r=await api({action:'getimg',ids:[id]});if(r.imgs&&r.imgs[id])IMGC[id]=r.imgs[id]}return IMGC[id]||''}
+async function api(body){
+  const r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:SY.token},body))});
+  const j=await r.json();if(!j.ok)throw new Error(j.err||'雲端錯誤');return j;
+}
+function recs(){const out=S.patients.map(p=>({col:'p',id:p.id,obj:p,name:p.name}));for(const k of KV_KEYS)if(S[k]!==undefined)out.push({col:'kv',id:k,obj:S[k],name:k});return out}
+async function uploadImgs(obj,name){
+  const todo=[];(function walk(o){if(!o||typeof o!=='object')return;for(const k of Object.keys(o)){const v=o[k];if(typeof v==='string'&&v.startsWith('data:image')&&v.length>500)todo.push([o,k]);else if(v&&typeof v==='object')walk(v)}})(obj);
+  for(const [o,k] of todo){const d=o[k];const r=await api({action:'img',data:d,name:`${name}_${k}_${today()}`});IMGC[r.id]=d;o[k]='img:'+r.id}
+  return todo.length;
+}
+function applyRemote(row){
+  const key=row.col+':'+row.id;
+  if(row.col==='p'){const i=S.patients.findIndex(p=>p.id===row.id);const local=i>=0?JSON.stringify(S.patients[i]):null;
+    if(local!=null&&SHADOW[key]!==undefined&&local!==SHADOW[key])return false; // 本機有未上傳的修改，以本機為準
+    if(row.deleted){if(i>=0)S.patients.splice(i,1);delete SHADOW[key];return true}
+    const obj=JSON.parse(row.json);if(i>=0)S.patients[i]=obj;else S.patients.unshift(obj);SHADOW[key]=row.json;return true}
+  if(row.col==='kv'){const val=row.deleted?undefined:JSON.parse(row.json);const mk=MERGE_KEYS[row.id];
+    if(mk&&Array.isArray(val)&&Array.isArray(S[row.id])){const m=new Map(val.map(x=>[x[mk],x]));for(const x of S[row.id])if(!m.has(x[mk]))m.set(x[mk],x);S[row.id]=[...m.values()];if(row.id!=='users')S[row.id].sort((a,b)=>(b.at||0)-(a.at||0))}
+    else{const local=S[row.id]===undefined?undefined:JSON.stringify(S[row.id]);if(local!==undefined&&SHADOW[key]!==undefined&&local!==SHADOW[key])return false;S[row.id]=val}
+    SHADOW[key]=row.json;return true}
+  return false;
+}
+async function syncNow(opts={}){
+  if(!syncOn())return;if(syncSt.busy){syncSt.again=true;return}
+  syncSt.busy=true;syncSt.err='';paintSync();
+  try{
+    // 1. 拉雲端
+    const r=await api({action:'pull',since:opts.full?0:(SY.since||0)});let changed=false;
+    for(const row of r.rows.sort((a,b)=>a.ts-b.ts))if(applyRemote(row))changed=true;
+    SY.since=Math.max(SY.since||0,r.ts||0);
+    // 2. 推本機
+    const ch=[];const seen=new Set();
+    for(const x of recs()){const key=x.col+':'+x.id;seen.add(key);if(await uploadImgs(x.obj,x.name))changed=true;const j=JSON.stringify(x.obj);if(SHADOW[key]!==j)ch.push({col:x.col,id:x.id,json:j,key})}
+    for(const key of Object.keys(SHADOW))if(key.startsWith('p:')&&!seen.has(key))ch.push({col:'p',id:key.slice(2),deleted:true,key});
+    if(ch.length){const res=await api({action:'push',by:me()?me().name:'',changes:ch.map(c=>({col:c.col,id:c.id,json:c.json,deleted:c.deleted}))});for(const c of ch){if(c.deleted)delete SHADOW[c.key];else SHADOW[c.key]=c.json}SY.since=Math.max(SY.since,res.ts)}
+    syncSt.at=Date.now();saveSY();saveShadow();localSave();
+    if(changed&&!opts.quiet)softRender();
+  }catch(e){syncSt.err=e.message||String(e)}
+  syncSt.busy=false;paintSync();
+  if(syncSt.again){syncSt.again=false;setTimeout(()=>syncNow({quiet:true}),300)}
+}
+function softRender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)||document.getElementById('modal')){syncSt.pendingRender=true;return}render()}
+document.addEventListener('focusout',()=>{if(syncSt.pendingRender){setTimeout(()=>{const a=document.activeElement;if(!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))&&!document.getElementById('modal')){syncSt.pendingRender=false;render()}},400)}});
+function queueSync(){if(!syncOn())return;clearTimeout(syncSt.timer);syncSt.timer=setTimeout(()=>syncNow({quiet:true}),1500)}
+function paintSync(){const el=document.getElementById('syncdot');if(!el)return;el.className='syncdot '+(syncSt.err?'bad':syncSt.busy?'busy':'ok');el.title=syncSt.err?'同步失敗：'+syncSt.err:syncSt.busy?'同步中…':'已同步 '+(syncSt.at?new Date(syncSt.at).toTimeString().slice(0,5):'')}
+setInterval(()=>{if(syncOn()&&document.visibilityState==='visible')syncNow()},45000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&syncOn())syncNow()});
+(function fromLink(){const m=location.hash.match(/#sync=([^&]+)/);if(!m)return;try{const [u,t]=decodeURIComponent(escape(atob(m[1]))).split('|');if(u&&t){SY={url:u,token:t,since:0};SHADOW={};saveSY();saveShadow();history.replaceState(null,'',location.pathname+location.search);setTimeout(()=>{toast('已連上診所雲端，正在下載資料…');syncNow({full:true})},300)}}catch(e){}})();
+function syncLink(){return location.origin+location.pathname+'#sync='+btoa(unescape(encodeURIComponent(SY.url+'|'+SY.token)))}
+function syncCard(){
+  const on=syncOn();
+  return `<div class="card"><h2>Google 雲端同步 ${on?`<span id="syncdot" class="syncdot ok"></span>`:''}</h2>
+   ${on?`<p style="margin:0 0 6px">已連上診所雲端。${syncSt.err?`<span style="color:var(--bad)">最近一次同步失敗：${h(syncSt.err)}</span>`:syncSt.at?'最近同步 '+new Date(syncSt.at).toLocaleTimeString('zh-TW',{hour12:false}):''}</p>
+     <div class="row"><button class="btn pri sm" onclick="syncNow().then(()=>render())">立即同步</button>${me().role==='管理員'?`<button class="btn sm" onclick="act.syncShare()">給同事的連線網址</button>`:''}<button class="btn sm" onclick="act.syncOff()">中斷連線</button></div>
+     <p class="muted" style="margin:6px 0 0">每 45 秒自動同步；照片存在診所雲端硬碟「立威個案管理_照片」資料夾。</p>`
+   :`<p class="muted" style="margin:0 0 6px">連上後，所有同事的資料會存在診所的 Google 試算表，照片存在雲端硬碟。</p>
+     <label class="f">網頁應用程式網址</label><input class="i" id="sy-u" placeholder="https://script.google.com/macros/s/…/exec">
+     <label class="f">金鑰</label><input class="i" id="sy-t" autocomplete="off">
+     <div class="row" style="margin-top:10px"><button class="btn" onclick="act.syncTest()">測試連線</button><button class="btn pri" onclick="act.syncConnect()">連線並同步</button></div>`}</div>`;
+}
+
 
 /* ========= 畫面 ========= */
 function go(name,o={}){V=Object.assign({name},o);render();window.scrollTo(0,0)}
@@ -448,12 +526,12 @@ function render(){
    ${clinic?'':`<div class="sec">其他</div>${item('mkt','行銷 case')}${item('handoff','待交接','第二階段')}${item('roster','上傳班表')}`}
    <div class="sec">設定</div>${item('prices','價目表')}${item('settings','設定')}<p class="muted" style="padding:14px 12px 0;margin:0;font-size:11px">版本：${APP_VER}</p></aside>
   <div class="scrim" onclick="document.body.classList.remove('menu')"></div>
-  <div class="demo">試用版・資料只存在這支手機的瀏覽器・請勿輸入真實病人資料</div>
-  <header class="top"><button class="hamb" aria-label="選單" onclick="document.body.classList.add('menu')">☰</button><b>立威個案管理</b>
+  ${syncOn()?'':'<div class="demo">尚未連上診所雲端・資料只存在這支手機・請勿輸入真實病人資料</div>'}
+  <header class="top">${syncOn()?'<span id="syncdot" class="syncdot"></span>':''}<button class="hamb" aria-label="選單" onclick="document.body.classList.add('menu')">☰</button><b>立威個案管理</b>
     <div class="who"><strong>${h(u.name)}</strong>${h(u.role)}・<a href="#" onclick="act.logout();return false" style="color:inherit">登出</a></div></header>
   <main>${body}</main>
   <button class="btn sm exitp" onclick="document.body.classList.remove('present')">結束展示</button>`;
-  after();
+  after();paintSync();
 }
 function after(){
   if(V.name==='mark')bindMark();
@@ -473,7 +551,7 @@ function viewLogin(){
     <label class="f" for="nm">姓名</label><input class="i" id="nm" placeholder="例如 王嘉慈">`:''}
     <button class="btn pri block" style="margin-top:16px" onclick="act.login()">${reg?'建立帳號並登入':'登入'}</button>
    </div>
-   <p class="muted">第一位建立的帳號會是管理員。試用版的帳號與資料只存在這支手機。</p>
+   <p class="muted">${syncOn()?'✓ 已連上診所雲端，帳號與資料由大家共用。':'第一位建立的帳號會是管理員。尚未連上雲端時，帳號與資料只存在這支手機。'}</p>
    <details class="card"><summary><b>📱 iPhone 請先「加入主畫面」</b></summary><p class="muted" style="margin:8px 0 0">用 Safari 打開這個網址 → 按下方「分享」按鈕 → 選「加入主畫面」。之後從桌面圖示打開，資料比較不會被手機自動清掉。</p></details>
   </div>`;
 }
@@ -709,7 +787,7 @@ function viewNewPatient(){
    <label style="display:block;margin-top:10px;font-size:14px"><input type="checkbox" id="np-nhis" ${p&&p.nhiSpecial?'checked':''}> 符合健保特殊族群（低收入戶、身心障礙、原住民族地區、偏遠離島，未滿 12 歲每 3 個月可塗氟）</label>
    <label class="f">全景 X 光</label>
    <div class="row"><label class="btn" for="np-x">上傳照片</label><input id="np-x" type="file" accept="image/*" hidden onchange="act.pickX(this)"><button class="btn" onclick="act.sampleX()">使用範例 X 光</button></div>
-   <div id="np-prev" style="margin-top:10px">${tmp.x?`<img src="${tmp.x}" style="width:100%;border-radius:8px">`:''}</div>
+   <div id="np-prev" style="margin-top:10px">${tmp.x?`<img src="${I(tmp.x)}" style="width:100%;border-radius:8px">`:''}</div>
    <button class="btn pri block" style="margin-top:16px" onclick="${p?'act.updatePatient()':'act.savePatient()'}">${p?'儲存資料':'建立病人，開始標牙位'}</button>${p?`<button class="btn block" style="margin-top:24px;color:var(--bad)" onclick="act.del('patient','${p.id}')">刪除這位病人</button>`:''}
   </div>`;
 }
@@ -724,7 +802,7 @@ function viewPatient(){
   ${nextBtn(p)}
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">牙位</h2><span class="pill ${p.teethDone?'g':'y'}">${p.teethDone?'已確認':'未完成'}</span><button class="btn sm" onclick="go('mark',{pid:'${p.id}'})">${p.teethDone?'修改牙位':'開始標牙位'}</button></div></div>
   <div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">臨床照片</h2><label class="btn sm" for="pp-photo">＋上傳照片</label><input id="pp-photo" type="file" accept="image/*" multiple hidden onchange="act.addPhotos(this)"></div>
-   ${(p.photos||[]).length?`<div class="vers">${p.photos.map(x=>`<div class="ver" style="padding:6px"><img src="${x.src}" style="width:100%;border-radius:6px;display:block"><label style="font-size:13px;display:block;margin-top:4px"><input type="checkbox" ${x.use?'checked':''} onchange="act.photoUse('${x.id}',this.checked)"> 放入計畫書</label><button class="btn sm" style="margin-top:4px" onclick="act.del('photo','${x.id}')">移除</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">上傳時會自動壓縮，勾選的照片會放進計畫書。</p>'}</div>
+   ${(p.photos||[]).length?`<div class="vers">${p.photos.map(x=>`<div class="ver" style="padding:6px"><img src="${I(x.src)}" style="width:100%;border-radius:6px;display:block"><label style="font-size:13px;display:block;margin-top:4px"><input type="checkbox" ${x.use?'checked':''} onchange="act.photoUse('${x.id}',this.checked)"> 放入計畫書</label><button class="btn sm" style="margin-top:4px" onclick="act.del('photo','${x.id}')">移除</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">上傳時會自動壓縮，勾選的照片會放進計畫書。</p>'}</div>
   ${flowCards(p)}
   <div class="card"><div class="row" style="margin-bottom:10px"><h2 class="grow" style="margin:0">報價紀錄</h2><button class="btn pri sm" onclick="act.newQuote('${p.id}')">＋貼醫囑出報價</button></div>
    ${p.quotes.length?`<div class="vers">${p.quotes.slice().reverse().map(q=>`<button class="ver" onclick="go('plan',{pid:'${p.id}',v:${q.v}})"><b>第 ${q.v} 版</b>${q.altLabel?`<span class="muted">${h(altName(q.altLabel))}</span>`:''}<span class="muted">${h(q.date)}</span><div style="font-weight:700;color:var(--deep)">NT$ ${money(calc(p,q).total)}</div><span class="pill ${q.signed?'g':''}">${q.signed?'已簽名':'草稿'}</span></button>`).join('')}</div>`:'<p class="muted">還沒有報價。</p>'}
@@ -927,7 +1005,7 @@ function viewDocCase(D,own){
   ${own?'':`<div class="card"><label class="f" for="mc-doc">查看醫師</label><select class="i" id="mc-doc" onchange="go('docs',{doc:this.value})"><option value="">全部醫師</option>${DOCTORS.map(d=>`<option ${d===D?'selected':''}>${d}</option>`).join('')}</select></div>`}
   <div class="tiles"><button class="tile ${f==='design'?'on':''} y" onclick="go('${nm}',Object.assign(${o},{f:'design'}))"><b>待設計</b><span class="n">${wait.length}</span><span class="muted">資料已上傳</span></button><button class="tile ${f==='all'?'on':''}" onclick="go('${nm}',Object.assign(${o},{f:'all'}))"><b>全部</b><span class="n">${all.length}</span><span class="muted">件</span></button></div>
   ${list.length?`<div class="mcgrid">${list.map(p=>{const st=caseStage(p);const ds=docsOf(p).filter(x=>!(own&&x===D)).map(x=>DOCCH[x]||x.slice(0,1)).join('／');
-    return `<button class="mc" onclick="go('patient',{pid:'${p.id}'})">${p.xray?`<img src="${p.xray}" alt="Pano">`:`<div class="mc-ph">${p.photosCleared?'<b style="font-size:20px;letter-spacing:.2em">療程中</b>':h(p.name)+`<br><small>${p.panoNote?h(p.panoNote):'尚未上傳 Pano'}</small>`}</div>`}
+    return `<button class="mc" onclick="go('patient',{pid:'${p.id}'})">${p.xray?`<img src="${I(p.xray)}" alt="Pano">`:`<div class="mc-ph">${p.photosCleared?'<b style="font-size:20px;letter-spacing:.2em">療程中</b>':h(p.name)+`<br><small>${p.panoNote?h(p.panoNote):'尚未上傳 Pano'}</small>`}</div>`}
      <div class="mc-t"><b>${h(p.name)}</b>｜${h(treatLabel(p))}${ds?'｜'+h(ds):''}</div><div class="mc-s"><span class="pill ${st[1]}">${h(st[0])}</span><span class="muted">建檔 ${h(p.created||'')}</span></div></button>`}).join('')}</div>`:`<p class="muted">${f==='design'?'目前沒有待設計的個案。':'目前沒有個案。'}</p>`}`;
 }
 
@@ -1038,7 +1116,7 @@ function flowCards(p){
 const DEL_PW='2508';
 function dlBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
 const dlJSON=(o,name)=>dlBlob(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}),name+'.json');
-function dlImgs(list,name){dlBlob(new Blob([`<!doctype html><meta charset="utf-8"><title>${h(name)}</title><body style="font-family:sans-serif;margin:16px"><h1>${h(name)}</h1><p>${today()} 備份</p>${list.map(x=>`<figure style="margin:0 0 16px"><img src="${x.src}" style="max-width:100%"><figcaption>${h(x.cap||'')}</figcaption></figure>`).join('')}</body>`],{type:'text/html'}),name+'.html')}
+async function dlImgs(list,name){for(const x of list)x.src=await imgData(x.src);dlBlob(new Blob([`<!doctype html><meta charset="utf-8"><title>${h(name)}</title><body style="font-family:sans-serif;margin:16px"><h1>${h(name)}</h1><p>${today()} 備份</p>${list.map(x=>`<figure style="margin:0 0 16px"><img src="${x.src}" style="max-width:100%"><figcaption>${h(x.cap||'')}</figcaption></figure>`).join('')}</body>`],{type:'text/html'}),name+'.html')}
 function delInfo(kind,ref){
   const p=V.pid?P(V.pid):null;
   if(kind==='nv'){const n=p.nv.find(x=>x.id===ref);return {label:`${p.name}｜預約「${n.task}」`,trash:true,data:n,pid:p.id,run(){p.nv=p.nv.filter(x=>x.id!==ref);fixTrack(p)},backup(){dlJSON({病人:p.name,預約:n},`${p.name}_預約備份_${todayISO()}`)}}}
@@ -1047,7 +1125,7 @@ function delInfo(kind,ref){
   if(kind==='patient'){const q=P(ref);return {label:`病人 ${q.name}（${q.chart||'無病歷號'}）整份資料`,trash:true,data:q,run(){S.patients=S.patients.filter(x=>x!==q);S.mkt=(S.mkt||[]).map(c=>c.pid===q.id?Object.assign(c,{pid:null}):c)},backup(){dlJSON(q,`${q.name}_病人資料備份_${todayISO()}`)},after(){tmp={};go('patients')}}}
   if(kind==='mktVisit'){const c=S.mkt.find(x=>x.id===V.mid);const v=c.visits.find(x=>x.id===ref);return {label:`行銷 case ${c.name}｜回診 ${v.date}`,trash:true,data:v,mid:c.id,run(){c.visits=c.visits.filter(x=>x!==v)},backup(){dlJSON({行銷case:c.name,回診:v},`${c.name}_回診備份_${todayISO()}`)}}}
   if(kind==='itemImg'){const it=priceOf(ref);const L=(S.itemImgs[ref]||[]);return {label:`價目表圖片：${it?it.name:ref}（${L.length} 張）`,trash:false,run(){delete S.itemImgs[ref]},backup(){dlImgs(L,`${it?it.name:ref}_圖片備份_${todayISO()}`)}}}
-  if(kind==='reset')return {label:'這支手機上的全部試用資料（帳號、病人、報價）',trash:false,run(){localStorage.removeItem(KEY);S=blank();tmp={}},backup(){dlJSON(S,`立威試用資料備份_${todayISO()}`)},after(){render()}};
+  if(kind==='reset')return {label:'這支手機上的全部資料（帳號、病人、報價）'+(syncOn()?'，並中斷雲端連線（雲端資料不會被刪除）':''),trash:false,run(){localStorage.removeItem(KEY);S=blank();tmp={};SY={};SHADOW={};saveSY();saveShadow()},backup(){dlJSON(S,`立威試用資料備份_${todayISO()}`)},after(){render()}};
   return null;
 }
 function logP(p,t){p.log=p.log||[];p.log.unshift({at:new Date().toLocaleString('zh-TW',{hour12:false}),by:me()?me().name:'',t})}
@@ -1119,7 +1197,7 @@ function prEditRow(x,k,ed,D){
    <div class="pe-g"><label>單位<input ${dis} value="${h(x.unit)}" onchange="${set('unit')}"></label><label>預設價<input type="number" ${dis} value="${x.price??''}" onchange="${set('price')}"></label><label>前牙價<input type="number" ${dis} value="${x.front??''}" onchange="${set('front')}"></label><label>最低<input type="number" ${dis} value="${x.min??''}" onchange="${set('min')}"></label><label>最高<input type="number" ${dis} value="${x.max??''}" onchange="${set('max')}"></label><label class="ck"><input type="checkbox" ${dis} ${x.from?'checked':''} onchange="act.prSet(${k},'from',this.checked?'1':'')">「起」</label></div>
    <label class="f">說明（會印在價目表）</label><textarea class="i" style="min-height:54px" ${dis} onchange="${set('desc')}">${h(x.desc||'')}</textarea>
    <div class="pe-g2"><label>醫囑寫法（逗號分開）<input ${dis} value="${h((x.alias||[]).join(','))}" onchange="${set('alias')}"></label><label>付款節點<input ${dis} value="${h(x.pay||'')}" onchange="${set('pay')}"></label></div>
-   <div class="row" style="margin-top:6px">${imgs.map((im,j)=>`<span class="pe-img"><img src="${im.src}">${ed?`<a href="#" onclick="act.prImgDel('${x.id}',${j});return false">✕</a>`:''}</span>`).join('')}${ed?`<label class="btn sm" for="pi-${x.id}">＋照片</label><input id="pi-${x.id}" type="file" accept="image/*" hidden onchange="act.prImg('${x.id}',this)">`:''}</div></div>`;
+   <div class="row" style="margin-top:6px">${imgs.map((im,j)=>`<span class="pe-img"><img src="${I(im.src)}">${ed?`<a href="#" onclick="act.prImgDel('${x.id}',${j});return false">✕</a>`:''}</span>`).join('')}${ed?`<label class="btn sm" for="pi-${x.id}">＋照片</label><input id="pi-${x.id}" type="file" accept="image/*" hidden onchange="act.prImg('${x.id}',this)">`:''}</div></div>`;
 }
 function priceTodos(){
   const D=S.priceDraft;if(!D)return [];const u=me();const out=[];
@@ -1143,7 +1221,7 @@ function viewMark(){
   <div class="row" style="margin-bottom:8px"><div class="grow">${nx?(tmp.relocate?`重新定位 <span class="next">${nx}</span>：點 X 光上的位置`:`下一顆：<span class="next">${nx}</span>（${ST[tmp.mode].label}）`):'<b style="color:var(--good)">32 顆都標完了</b>'}</div>
    <button class="btn sm" onclick="act.skip()" ${nx&&!tmp.relocate?'':'disabled'}>跳過</button><button class="btn sm" onclick="act.undo()">上一步</button><button class="btn sm" onclick="act.clearAll()">一鍵清除</button></div>
   <div class="row" style="margin-bottom:6px"><button class="btn sm" onclick="tmp.zoom=!tmp.zoom;tmp.xsl=0;render()">${tmp.zoom?'縮小 X 光':'放大 X 光'}</button><span class="muted">${tmp.zoom?'左右滑動 X 光來點選':''}</span></div>
-  <div class="xscroll ${tmp.zoom?'zoom':''}" id="xs"><div class="xwrap" id="xw"><img src="${p.xray||sampleXray()}" alt="全景 X 光">${ORDER.filter(t=>p.teeth[t]&&p.teeth[t].x!=null).map(t=>{const d=p.teeth[t],s=ST[d.s];return `<span class="mk ${Math.floor(t/10)<=2?'up':'dn'}" style="left:${d.x}%;top:${d.y}%;background:${d.s==='ok'?'#7ed1a0':s.bg}"><i>${t}</i></span>`}).join('')}</div></div>
+  <div class="xscroll ${tmp.zoom?'zoom':''}" id="xs"><div class="xwrap" id="xw"><img src="${p.xray?I(p.xray):sampleXray()}" alt="全景 X 光">${ORDER.filter(t=>p.teeth[t]&&p.teeth[t].x!=null).map(t=>{const d=p.teeth[t],s=ST[d.s];return `<span class="mk ${Math.floor(t/10)<=2?'up':'dn'}" style="left:${d.x}%;top:${d.y}%;background:${d.s==='ok'?'#7ed1a0':s.bg}"><i>${t}</i></span>`}).join('')}</div></div>
   <div class="tgrid">${UPPER.map(t=>tbtn(p,t)).join('')}<div class="gap"></div>${LOWER.map(t=>tbtn(p,t)).join('')}</div>
   ${tmp.sel?selPanel(p,tmp.sel):'<p class="muted">點上方牙位圖的牙齒可以改狀態或重新定位。</p>'}
   <button class="btn pri block" style="margin-top:12px" onclick="act.finishMark()">完成，送出確認</button>`;
@@ -1745,7 +1823,7 @@ function xrayAnn(p,q){
     const hot=st.imp.has(t)||st.ext.has(t)||st.bridge.has(t)||st.veneer.has(t)||st.crown.has(t)||st.graft[t];
     out+=sym+`<span class="a-num ${hot?'hot':''}" style="left:${d.x}%;top:${d.y+(up?-15:24)}%">${t}</span>`;
   }
-  return `<div class="s-xray ann"><img src="${p.xray}" alt="全景 X 光">${out}</div>
+  return `<div class="s-xray ann"><img src="${I(p.xray)}" alt="全景 X 光">${out}</div>
   <div class="legend"><span><b style="color:#FD4F00">螺絲</b> 植牙</span><span><b style="color:#FD4F00">×</b> 拔牙</span><span><b style="color:#9b8a7d">××</b> 缺牙</span><span><i style="background:none;border:2px solid #E2C21F"></i>牙橋</span><span><i style="background:none;border:2px solid #fff;outline:1px solid #ccc"></i>貼片</span><span><i style="background:none;border:2px dashed #F2C49E;border-radius:50%"></i>補骨／鼻竇增高</span></div>`;
 }
 function estPos(p,t){
@@ -1793,7 +1871,7 @@ function equipList(q){
 function equipHTML(eq,brand,np){
   if(!eq.length)return '';
   return `<section class="sheet">${brand}
-   <section><h3 class="s-h">為您安排的設備與流程</h3><div class="equip">${eq.map(e=>`<figure class="${e.wide?'wide':''}"><img src="${e.src}" alt="${h(e.cap)}"><figcaption>${h(e.cap)}</figcaption></figure>`).join('')}</div></section>
+   <section><h3 class="s-h">為您安排的設備與流程</h3><div class="equip">${eq.map(e=>`<figure class="${e.wide?'wide':''}"><img src="${I(e.src)}" alt="${h(e.cap)}"><figcaption>${h(e.cap)}</figcaption></figure>`).join('')}</div></section>
    <footer class="s-foot"><span>立威口腔顎面外科牙醫診所・治療計畫書</span><span>3 / ${np}</span></footer>
   </section>`;
 }
@@ -1836,7 +1914,7 @@ function planHTML(p,q){
    <section><h3 class="s-h">影像檢查</h3>${xrayAnn(p,q)}</section>
    <section><h3 class="s-h">牙位圖</h3><div class="chartbox" data-v="${q.v}"></div>
     <div class="legend"><span><i style="background:var(--deep);border-color:var(--deep)"></i>本次植牙</span><span><i style="background:var(--yellow);border-color:#D9BC33"></i>牙橋假牙</span><span><i style="background:#5b6f86;border-color:#5b6f86"></i>已有植體</span><span><i style="background:#fff;border-style:dashed"></i>缺牙</span><span><i style="background:var(--skin);border-radius:50%;border-color:var(--skin)"></i>補骨／鼻竇增高</span></div></section>
-   ${photos.length?`<section><h3 class="s-h">臨床照片</h3><div class="photos">${photos.map(x=>`<img src="${x.src}" alt="臨床照片">`).join('')}</div></section>`:''}
+   ${photos.length?`<section><h3 class="s-h">臨床照片</h3><div class="photos">${photos.map(x=>`<img src="${I(x.src)}" alt="臨床照片">`).join('')}</div></section>`:''}
    <section><h3 class="s-h">治療建議</h3><div class="recs">${recs.map(i=>`<div class="rec"><span class="t">${i.teeth.length?h(i.teeth.join('·')):i.tbd?'待確認':'全口'}</span>${h(i.name)}</div>`).join('')}</div></section>
    ${(q.today||[]).length?`<section><h3 class="s-h">本日已完成</h3><div class="recs">${q.today.map(t=>`<div class="rec"><span class="t" style="color:var(--good)">✓ ${t.teeth&&t.teeth.length?h(t.teeth.join('·')):''}</span>${h(t.name)}${t.price&&!t.nhi&&!t.gift?'<span class="muted">（本日費用另計 '+wan(t.price)+'）</span>':''}</div>`).join('')}</div></section>`:''}
    <footer class="s-foot"><span>立威口腔顎面外科牙醫診所・治療計畫書</span><span>1 / ${np}</span></footer>
@@ -1857,7 +1935,7 @@ function planHTML(p,q){
    ${(q.evals||[]).length?`<section><h3 class="s-h">需要進一步評估</h3><ul class="pay">${q.evals.map(e=>`<li>${h(e)}</li>`).join('')}</ul><p class="muted" style="margin:6px 0 0">流程：資料收集（拍照、口掃、CT 等）→ 醫師評估 → 提供正式報價。評估後若無需治療，資料收集費用依各項目說明辦理。</p></section>`:''}
    <section><h3 class="s-h">注意事項</h3><ul class="pay">${caries?'<li>蛀牙需要清除後才能確定深度；若接近神經，可能需要根管治療，根管治療後通常需要製作牙冠保護牙齒。</li>':''}<li>手術前請告知目前服用的藥物與全身病史。</li><li>安排鎮靜麻醉者，手術前 8 小時請勿進食，並請家屬陪同。</li><li>治療期間如需調整計畫，診所將另出新版計畫書供您確認。</li></ul></section>
    <section class="sign"><p>本人經醫師說明，了解並選擇上述治療方式，並已完全了解所有必須的費用。</p>
-    <div class="sign-row"><div>病人簽名${q.sign?`<img src="${q.sign}" alt="簽名">`:''}</div><div>見證人　${h(q.witness||'')}</div><div>主治醫師　${h(doctor||'')}</div><div>日期　${q.signed?h(q.signedAt):''}</div></div></section>
+    <div class="sign-row"><div>病人簽名${q.sign?`<img src="${I(q.sign)}" alt="簽名">`:''}</div><div>見證人　${h(q.witness||'')}</div><div>主治醫師　${h(doctor||'')}</div><div>日期　${q.signed?h(q.signedAt):''}</div></div></section>
    <footer class="s-foot"><span>台北市大同區・立威口腔顎面外科牙醫診所</span><span>2 / ${np}</span></footer>
   </section>${equipHTML(eq,brand,np)}`;
 }
@@ -1885,7 +1963,7 @@ function drawChartsInPlan(){const p=P(V.pid);const q=p&&quoteOf(p,V.v);if(!q)ret
 /* ---- 設定 ---- */
 function viewSettings(){
   const u=me();const admin=u.role==='管理員';
-  return `<h1>設定</h1>
+  return `<h1>設定</h1>${syncCard()}
   <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span></div>${admin?`${x.acc!==u.acc?`<select onchange="act.role('${h(x.acc)}',this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link('${h(x.acc)}',this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
    ${admin?`<p class="muted" style="margin:8px 0 0">診所註冊碼：${REG_CODE}（正式版可在這裡更換）</p>`:''}</div>
   <div class="card"><div class="row"><div class="grow"><h2 style="margin:0">價目表</h2><span class="muted">${h(S.priceDate||'')} 起使用・${S.prices.length} 項${S.priceDraft?'・有一份'+PST[S.priceDraft.status][0]:''}</span></div><button class="btn pri sm" onclick="go('prices')">打開價目表</button></div>
@@ -1905,6 +1983,7 @@ const act={
     const acc=document.getElementById('acc').value.trim(),pw=document.getElementById('pw').value;
     tmp.acc=acc;tmp.pw=pw;
     if(!acc||!pw)return toast('請輸入帳號和密碼');
+    if(syncOn()&&!syncSt.at){syncNow({full:!SY.since});return toast('正在下載診所雲端資料，請等幾秒再按登入')}
     const u=S.users.find(x=>x.acc.toLowerCase()===acc.toLowerCase());
     if(u){if(u.pw!==hash(pw))return toast('密碼不正確');S.me=u.acc;tmp={};save();go('home');return}
     if(!tmp.reg){tmp.reg=true;render();return}
@@ -1923,7 +2002,7 @@ const act={
     if(!name)return toast('請填姓名');
     if(chart){const ex=S.patients.find(p=>p.chart===chart);
       if(ex){toast('已有這位病人，直接打開資料夾');tmp={};return go('patient',{pid:ex.id})}}
-    const p={id:'p'+(S.seq++),name,chart,job:g('np-job'),area:g('np-area'),doctor:g('np-doc'),consult:g('np-con'),mgr:g('np-mgr'),src:g('np-src'),nhiSpecial:document.getElementById('np-nhis').checked,xray:tmp.x||null,teeth:{},stack:[],teethDone:false,quotes:[],created:today(),cts:Date.now()};
+    const p={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name,chart,job:g('np-job'),area:g('np-area'),doctor:g('np-doc'),consult:g('np-con'),mgr:g('np-mgr'),src:g('np-src'),nhiSpecial:document.getElementById('np-nhis').checked,xray:tmp.x||null,teeth:{},stack:[],teethDone:false,quotes:[],created:today(),cts:Date.now()};
     S.patients.unshift(p);tmp={};save();go('mark',{pid:p.id});
   },
   updatePatient(){
@@ -2031,8 +2110,8 @@ const act={
    ${D.trash?'<p class="muted" style="margin:0">刪除後會放在「最近刪除」30 天，管理員可以復原。</p>':'<p class="muted" style="margin:0;color:var(--bad)">這項刪除後無法復原。</p>'}
    <label class="f">刪除密碼</label><input class="i" type="password" id="dk-pw" inputmode="numeric" autocomplete="off">
    <div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doDel('${kind}','${ref||''}')">確定刪除</button></div>`)},
-  doDel(kind,ref){if(document.getElementById('dk-pw').value!==DEL_PW)return toast('密碼不正確');const keep=(document.querySelector('input[name=dk]:checked')||{}).value==='keep';const D=delInfo(kind,ref);
-    try{if(keep)D.backup()}catch(e){return toast('備份失敗，沒有刪除')}
+  async doDel(kind,ref){if(document.getElementById('dk-pw').value!==DEL_PW)return toast('密碼不正確');const keep=(document.querySelector('input[name=dk]:checked')||{}).value==='keep';const D=delInfo(kind,ref);
+    try{if(keep){toast('正在準備備份…');await D.backup()}}catch(e){return toast('備份失敗，沒有刪除')}
     const who=me()?me().name:'';if(D.trash){S.trash=S.trash||[];S.trash.unshift({id:'t'+Date.now(),at:Date.now(),by:who,label:D.label,kind,data:JSON.parse(JSON.stringify(D.data)),pid:D.pid||null,mid:D.mid||null})}
     D.run();if(kind!=='reset'){S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:who,label:D.label,backup:keep});if(D.pid&&P(D.pid))logP(P(D.pid),'刪除：'+D.label)}
     save();closeModal();toast(keep?'已下載備份並刪除':'已刪除');if(D.after)D.after();else render()},
@@ -2040,6 +2119,14 @@ const act={
   doRestore(id){if(document.getElementById('rs-pw').value!==DEL_PW)return toast('密碼不正確');const t=S.trash.find(x=>x.id===id);if(!t)return;
     if(t.kind==='patient')S.patients.unshift(t.data);else if(t.kind==='nv'){const p=P(t.pid);if(!p)return toast('病人已不存在');p.nv=p.nv||[];p.nv.push(t.data);fixTrack(p)}else if(t.kind==='mktVisit'){const c=(S.mkt||[]).find(x=>x.id===t.mid);if(!c)return toast('行銷 case 已不存在');c.visits.push(t.data)}
     S.trash=S.trash.filter(x=>x!==t);S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:me().name,label:'復原：'+t.label,backup:true});save();closeModal();toast('已復原');render()},
+  async syncTest(){const u=document.getElementById('sy-u').value.trim(),t=document.getElementById('sy-t').value.trim();if(!u||!t)return toast('請填網址和金鑰');const old=SY;SY={url:u,token:t};try{await api({action:'ping'});toast('連線成功 ✓')}catch(e){toast('連線失敗：'+e.message)}SY=old},
+  async syncConnect(){const u=document.getElementById('sy-u').value.trim(),t=document.getElementById('sy-t').value.trim();if(!u||!t)return toast('請填網址和金鑰');
+    SY={url:u,token:t,since:0};let r;try{r=await api({action:'pull',since:0})}catch(e){SY={};return toast('連線失敗：'+e.message)}
+    if(r.rows.length){modal(`<h2>雲端已經有資料</h2><p>雲端已有 ${r.rows.filter(x=>x.col==='p'&&!x.deleted).length} 位病人。要用雲端的資料取代這支手機的資料嗎？這支手機目前的資料會先自動下載一份備份。</p><div class="row"><button class="btn grow" onclick="SY={};closeModal()">取消</button><button class="btn pri grow" onclick="act.syncAdopt()">使用雲端資料</button></div>`)}
+    else{SHADOW={};saveSY();saveShadow();toast('連線成功，正在把這支手機的資料上傳到雲端…');await syncNow();toast(syncSt.err?'上傳失敗：'+syncSt.err:'已上傳到雲端 ✓');render()}},
+  async syncAdopt(){closeModal();dlJSON(S,`連雲端前自動備份_${todayISO()}`);const meAcc=S.me;S=blank();S.me=meAcc;SHADOW={};SY.since=0;saveSY();saveShadow();await syncNow({full:true});if(!S.users.some(u=>u.acc===S.me))S.me=null;localSave();toast(syncSt.err?'下載失敗：'+syncSt.err:'已下載雲端資料 ✓');render()},
+  syncShare(){const l=syncLink();modal(`<h2>給同事的連線網址</h2><p class="muted">同事用手機或平板打開這個網址，就會自動連上診所雲端，再用自己的帳號登入。<b>這個網址包含金鑰，只傳給診所同事。</b></p><textarea class="i" id="sl-t" style="min-height:90px">${h(l)}</textarea><div class="row" style="margin-top:10px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="const t=document.getElementById('sl-t');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})">複製</button></div>`)},
+  syncOff(){modal(`<h2>中斷雲端連線？</h2><p class="muted">這支手機會停止同步，雲端資料不受影響。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="SY={};SHADOW={};saveSY();saveShadow();closeModal();render()">中斷</button></div>`)},
   newQuote(pid){tmp.q2=null;tmp.editV=null;tmp.promo=false;go('orders',{pid})},
   parse(){
     const text=document.getElementById('ord').value;if(!text.trim())return toast('請先貼上醫囑');
@@ -2178,6 +2265,7 @@ function sampleXray(){
 /* ========= 啟動 ========= */
 if(S.me&&me())V={name:'home'};
 render();
+if(syncOn())syncNow({full:!SY.since});
 </script>
 </body>
 </html>
