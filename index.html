@@ -366,7 +366,7 @@ const DEFAULT_PRICES=[
  {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
  {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
 ];
-const APP_VER='10/08 20:00';
+const APP_VER='10/08 20:30';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -642,6 +642,7 @@ function viewRoster(){
 }
 function rgbOf(f){if(!f)return null;const x=String(f.rgb||'').toUpperCase().slice(-6);if(!/^[0-9A-F]{6}$/.test(x))return null;return [parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)]}
 const isPink=c=>!!c&&c[0]>=0xE0&&c[2]>=0x99&&c[1]<=0xCC&&c[0]-c[1]>=0x33;
+const isPaleGreen=c=>!!c&&c[1]>=0xC8&&c[0]>=0xA8&&c[2]>=0xA0&&c[1]-c[0]>=6&&c[1]-c[2]>=10&&c[1]-Math.min(c[0],c[2])<=0x50;
 const isRed=c=>!!c&&c[0]>=0x90&&c[1]<=0x50&&c[2]<=0x50;
 const isOrange=c=>!!c&&c[0]>=0xF0&&c[1]>=0xA0&&c[1]<=0xD0&&c[2]<=0x40;
 function parseRoster(wb,m){
@@ -658,7 +659,7 @@ function parseRoster(wb,m){
     if(!cur||!['早','午','晚'].includes(shv))continue;
     const row={};
     for(const {c,n} of names){const x=cell(r,c);const code=x&&x.v!=null?String(x.v).trim():'';const f=x&&x.s&&x.s.fgColor;const rgb=rgbOf(f);
-      const sup=!!(f&&((f.theme===6&&f.tint>0.3)||String(f.rgb||'').toUpperCase().endsWith('D7E4BD')));
+      const sup=!!(f&&((f.theme===6&&f.tint>0.3)||isPaleGreen(rgb)));
       const duty=isPink(rgb);const dayoff=!code&&isRed(rgb);const leave=/特/.test(code)||(!code&&isOrange(rgb));
       if(code||sup||duty||dayoff||leave)row[n]={code,sup,duty,dayoff,leave}}
     days[cur].shifts[shv]=row;
