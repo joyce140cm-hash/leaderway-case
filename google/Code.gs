@@ -9,6 +9,7 @@
  *   5. 到 app「設定 → Google 雲端同步」貼上網址和金鑰。
  */
 const CHUNK = 45000; // 每格最多 5 萬字，分段存
+const MIN_VER = 3;   // 低於這個版本的 app 只能讀、不能寫（避免舊版蓋掉新資料）
 
 function setup() {
   const p = PropertiesService.getScriptProperties();
@@ -38,7 +39,10 @@ function doPost(e) {
   try {
     if (b.action === 'ping') return out({ ok: true, now: Date.now() });
     if (b.action === 'pull') return out(pull_(+b.since || 0));
-    if (b.action === 'push') return out(push_(b.changes || [], b.by || ''));
+    if (b.action === 'push') {
+      if ((+b.ver || 0) < MIN_VER) return out({ ok: false, old: true, err: 'app 版本太舊，請重新整理頁面' });
+      return out(push_(b.changes || [], b.by || ''));
+    }
     if (b.action === 'img') return out(img_(b));
     if (b.action === 'getimg') return out(getimg_(b.ids || []));
     return out({ ok: false, err: '未知的動作' });

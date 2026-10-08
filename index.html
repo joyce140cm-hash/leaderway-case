@@ -367,7 +367,8 @@ const DEFAULT_PRICES=[
  {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
  {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
 ];
-const APP_VER='10/08 16:30';
+const APP_VER='10/08 18:40';
+const SYNC_VER=3; // 雲端用來擋掉舊版程式上傳
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -467,8 +468,8 @@ function I(s){if(!s)return '';if(!String(s).startsWith('img:'))return s;const id
 async function loadImgs(){const ids=[...IMG_WAIT].filter(id=>!IMGC[id]);IMG_WAIT.clear();for(let k=0;k<ids.length;k+=8){const part=ids.slice(k,k+8);try{const r=await api({action:'getimg',ids:part});for(const [id,d] of Object.entries(r.imgs||{}))if(d){IMGC[id]=d;document.querySelectorAll(`img[src="${BLANK}#img:${id}"]`).forEach(el=>el.src=d)}}catch(e){}}}
 async function imgData(s){if(!s||!String(s).startsWith('img:'))return s;const id=s.slice(4);if(!IMGC[id]){const r=await api({action:'getimg',ids:[id]});if(r.imgs&&r.imgs[id])IMGC[id]=r.imgs[id]}return IMGC[id]||''}
 async function api(body){
-  const r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:SY.token},body))});
-  const j=await r.json();if(!j.ok)throw new Error(j.err||'雲端錯誤');return j;
+  const r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:SY.token,ver:SYNC_VER},body))});
+  const j=await r.json();if(!j.ok){if(j.old)checkVersion(true);throw new Error(j.err||'雲端錯誤')}return j;
 }
 function recs(){const out=S.patients.map(p=>({col:'p',id:p.id,obj:p,name:p.name}));for(const k of KV_KEYS)if(S[k]!==undefined)out.push({col:'kv',id:k,obj:S[k],name:k});return out}
 async function uploadImgs(obj,name){
@@ -495,6 +496,12 @@ function mergeArr(b,l,r){
   l.forEach((x,i)=>{const k=kl[i];if(seen.has(k))return;if(B.has(k)&&!R.has(k)){if(!sameJ(B.get(k),x))out.push(x)}else out.push(x)});
   return out;
 }
+function mergeUsers(b,l,r){ // 帳號只合併、不因同步而刪除；同一個帳號兩邊都改 → 欄位合併
+  const B=new Map((Array.isArray(b)?b:[]).map(x=>[x.acc,x])),L=new Map(l.map(x=>[x.acc,x]));const out=[],seen=new Set();
+  for(const x of r){seen.add(x.acc);out.push(L.has(x.acc)?merge3(B.get(x.acc),L.get(x.acc),x):x)}
+  for(const x of l)if(!seen.has(x.acc))out.push(x);
+  return out;
+}
 function applyRemote(row){
   const key=row.col+':'+row.id;
   if(!row.deleted&&SHADOW[key]===sig(row.json))return false; // 已經是這個版本（多半是自己剛上傳的）
@@ -507,8 +514,8 @@ function applyRemote(row){
   const dirty=lj!==undefined&&SHADOW[key]!==sig(lj);
   if(row.deleted){if(!dirty)set(undefined);delBase(key);return true} // 這台有改過 → 保留，之後再上傳
   const remote=JSON.parse(row.json);
-  if(!dirty)set(remote);
-  else{const bj=BASE.get(key);let merged=merge3(bj?JSON.parse(bj):undefined,cur,remote);
+  if(!dirty){if(row.id==='users'&&Array.isArray(cur)&&Array.isArray(remote)){const ra=new Set(remote.map(x=>x.acc));set(remote.concat(cur.filter(x=>!ra.has(x.acc))))}else set(remote)}
+  else{const bj=BASE.get(key);const base=bj?JSON.parse(bj):undefined;let merged=row.id==='users'&&Array.isArray(cur)&&Array.isArray(remote)?mergeUsers(base,cur,remote):merge3(base,cur,remote);
     if((row.id==='delLog'||row.id==='trash')&&Array.isArray(merged))merged.sort((a,b)=>(b.at||0)-(a.at||0));
     set(merged)}
   setBase(key,row.json);return true;
@@ -537,6 +544,19 @@ async function syncNow(opts={}){
   syncSt.busy=false;paintSync();
   if(syncSt.again){syncSt.again=false;setTimeout(()=>syncNow({quiet:true}),300)}
 }
+// 自動更新：發現網站有新版本就重新整理（保留連線網址）
+let verBusy=false;
+async function checkVersion(force){
+  if(verBusy||location.protocol==='file:')return;verBusy=true;
+  try{const t=await (await fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'})).text();const m=t.match(/const APP_VER='([^']+)'/);
+    if(m&&m[1]!==APP_VER){let tried='';try{tried=sessionStorage.getItem('lw-upd')||''}catch(e){}
+      if(tried!==m[1]){try{sessionStorage.setItem('lw-upd',m[1])}catch(e){}const u=new URL(location.href);u.searchParams.set('v',Date.now().toString(36));
+        const busy=()=>{const a=document.activeElement;return a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)||document.getElementById('modal')};
+        if(force||!busy()){localSave();location.replace(u.toString())}else{toast('有新版本，存檔後會自動更新');setTimeout(()=>{verBusy=false;checkVersion()},20000);return}}}}
+  catch(e){}verBusy=false;
+}
+setTimeout(checkVersion,3000);setInterval(checkVersion,10*60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkVersion()});
 function softRender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)||document.getElementById('modal')){syncSt.pendingRender=true;return}render()}
 document.addEventListener('focusout',()=>{if(syncSt.pendingRender){setTimeout(()=>{const a=document.activeElement;if(!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))&&!document.getElementById('modal')){syncSt.pendingRender=false;render()}},400)}});
 function queueSync(){if(!syncOn())return;clearTimeout(syncSt.timer);syncSt.timer=setTimeout(()=>syncNow({quiet:true}),1500)}
