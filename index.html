@@ -136,6 +136,7 @@ details.sec[open]>summary{margin-bottom:10px}
 .sec-t{font-size:12px;color:var(--muted);letter-spacing:.12em;margin:6px 0 6px}
 .side .cnt{margin-left:auto;margin-right:6px;background:var(--deep);color:#fff;border-radius:99px;font-size:11px;padding:0 7px;font-weight:700;line-height:18px}
 .pinfo{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:8px 0 0;font-size:15px}.pinfo dt{color:var(--muted);font-size:13px;padding-top:2px}.pinfo dd{margin:0}
+.lg-rec{border-top:1px solid var(--line);padding:8px 0;font-size:14px;line-height:1.5}.lg-rec:first-of-type{border-top:0}
 .next-btn{margin:0 0 14px;font-size:16px;padding:13px}.next-btn.wait{background:var(--cream);border-radius:10px;text-align:center;color:var(--muted);font-size:14px;padding:10px}
 select.mini{border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff;max-width:120px}
 .vers{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -366,7 +367,7 @@ const DEFAULT_PRICES=[
  {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
  {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
 ];
-const APP_VER='10/08 21:00';
+const APP_VER='10/08 16:30';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -406,7 +407,7 @@ const MKT={none:{label:'無',off:0},teach:{label:'AO4 教學專案',off:50000},m
 /* ========= 狀態 ========= */
 let S=load();
 (function migrate(){S.itemImgs=S.itemImgs||{};
-  if(S.priceBase!==PRICE_VER){const custom=(S.prices||[]).filter(x=>!DEFAULT_PRICES.some(d=>d.id===x.id)&&/^c\d/.test(x.id));
+  if(S.priceBase!==PRICE_VER&&!S.priceApprover){const custom=(S.prices||[]).filter(x=>!DEFAULT_PRICES.some(d=>d.id===x.id)&&/^c\d/.test(x.id));
     if(S.prices&&S.prices.length){S.priceVersions=S.priceVersions||[];S.priceVersions.unshift({ver:S.priceBase||'舊版',date:new Date().toLocaleDateString('zh-TW'),by:'系統',note:'升級前自動備份',prices:S.prices})}
     S.prices=JSON.parse(JSON.stringify(DEFAULT_PRICES)).concat(custom);S.priceBase=PRICE_VER;S.priceDate=S.priceDate||new Date().toLocaleDateString('zh-TW')}
 })();
@@ -419,6 +420,7 @@ function localSave(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){mo
 function usage(){let n=0;try{n=(localStorage.getItem(KEY)||'').length}catch(e){}return {mb:n*2/1048576,pct:Math.min(100,Math.round(n/5e6*100))}}
 const me=()=>S.users.find(u=>u.acc===S.me);
 const P=id=>S.patients.find(p=>p.id===id);
+const js=v=>h(JSON.stringify(v));
 const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>(n==null||isNaN(n))?'待補':Math.round(n).toLocaleString('en-US');
 const today=()=>{const d=new Date();return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0')};
@@ -428,13 +430,33 @@ function toast(t){const e=document.createElement('div');e.className='toast';e.te
 function ageOf(chart){const m=/^(\d{3})(\d{2})(\d{2})/.exec(chart||'');if(!m)return null;const y=1911+ +m[1],mo=+m[2],d=+m[3];const n=new Date();let a=n.getFullYear()-y;if(n.getMonth()+1<mo||(n.getMonth()+1===mo&&n.getDate()<d))a--;return a}
 const isFront=t=>[1,2,3].includes(t%10);
 const isLower=t=>Math.floor(t/10)>=3;
-const priceOf=id=>S.prices.find(x=>x.id===id);
+const priceOf=id=>S.prices.find(x=>x.id===id)||DEFAULT_PRICES.find(x=>x.id===id);
 /* ===== Google 雲端同步 ===== */
 const SYNC_KEY='lw-sync',SHADOW_KEY='lw-shadow';
 const KV_KEYS=['users','mkt','prices','priceFile','priceBase','priceDate','priceBy','priceApprover','priceDraft','priceVersions','itemImgs','roster','editor','trash','delLog'];
-const MERGE_KEYS={users:'acc',delLog:'at',trash:'id'};
 let SY=(()=>{try{return JSON.parse(localStorage.getItem(SYNC_KEY))||{}}catch(e){return {}}})();
+// SHADOW：每筆資料「上次和雲端一致時」的指紋（很小）；完整內容存在 IndexedDB（BASE），衝突時用來合併
 let SHADOW=(()=>{try{return JSON.parse(localStorage.getItem(SHADOW_KEY))||{}}catch(e){return {}}})();
+const sig=j=>'h'+hash(j)+'.'+j.length;
+const isSig=v=>typeof v==='string'&&/^h-?\d+\.\d+$/.test(v);
+const BASE=new Map();
+const IDB=(()=>{let dbp=null;
+  function db(){if(!dbp)dbp=new Promise((res,rej)=>{try{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('lw-case',1);r.onupgradeneeded=()=>r.result.createObjectStore('base');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}});return dbp}
+  function run(mode,fn){return db().then(d=>new Promise((res,rej)=>{const t=d.transaction('base',mode);fn(t.objectStore('base'));t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})).catch(()=>{})}
+  return {
+    all(){return db().then(d=>new Promise((res,rej)=>{const m=new Map();const c=d.transaction('base','readonly').objectStore('base').openCursor();c.onsuccess=()=>{const x=c.result;if(x){m.set(x.key,x.value);x.continue()}else res(m)};c.onerror=()=>rej(c.error)}))},
+    putMany(list){return list.length?run('readwrite',st=>{for(const [k,v] of list)st.put(v,k)}):Promise.resolve()},
+    delMany(keys){return keys.length?run('readwrite',st=>{for(const k of keys)st.delete(k)}):Promise.resolve()},
+    clear(){return run('readwrite',st=>st.clear())}
+  }})();
+const basePend={put:new Map(),del:new Set(),t:null};
+function flushBase(){clearTimeout(basePend.t);basePend.t=null;const p=[...basePend.put],d=[...basePend.del];basePend.put.clear();basePend.del.clear();IDB.delMany(d).then(()=>IDB.putMany(p))}
+function setBase(key,json){BASE.set(key,json);SHADOW[key]=sig(json);basePend.del.delete(key);basePend.put.set(key,json);if(!basePend.t)basePend.t=setTimeout(flushBase,200)}
+function delBase(key){BASE.delete(key);delete SHADOW[key];basePend.put.delete(key);basePend.del.add(key);if(!basePend.t)basePend.t=setTimeout(flushBase,200)}
+function resetShadow(){SHADOW={};BASE.clear();basePend.put.clear();basePend.del.clear();IDB.clear();saveShadow()}
+// 舊版 SHADOW 存的是完整內容 → 搬到 IndexedDB，localStorage 只留指紋（省一半空間）
+(function migrateShadow(){let n=0;for(const [k,v] of Object.entries(SHADOW))if(typeof v==='string'&&!isSig(v)){BASE.set(k,v);basePend.put.set(k,v);SHADOW[k]=sig(v);n++}if(n){saveShadow();flushBase()}})();
+const baseReady=IDB.all().then(m=>{for(const [k,v] of m)if(!BASE.has(k)&&typeof v==='string'&&SHADOW[k]===sig(v))BASE.set(k,v)}).catch(()=>{});
 const syncSt={busy:false,err:'',at:0,timer:null,again:false};
 const IMGC={};const IMG_WAIT=new Set();let imgTimer=null;
 const BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
@@ -454,48 +476,78 @@ async function uploadImgs(obj,name){
   for(const [o,k] of todo){const d=o[k];const r=await api({action:'img',data:d,name:`${name}_${k}_${today()}`});IMGC[r.id]=d;o[k]='img:'+r.id}
   return todo.length;
 }
+/* ---- 三方合併：上次同步的版本(b)、這台(l)、雲端(r)。兩邊改不同地方 → 都保留；改同一個值 → 以這台為準 ---- */
+const sameJ=(a,b)=>a===b||JSON.stringify(a)===JSON.stringify(b);
+const isObj=x=>x&&typeof x==='object'&&!Array.isArray(x);
+function merge3(b,l,r){
+  if(sameJ(l,r))return l;
+  if(b===undefined){if(l===undefined)return r;if(r===undefined)return l}
+  else{if(sameJ(b,l))return r;if(sameJ(b,r))return l}
+  if(Array.isArray(l)&&Array.isArray(r))return mergeArr(Array.isArray(b)?b:[],l,r);
+  if(isObj(l)&&isObj(r)){const bb=isObj(b)?b:{};const o={};for(const k of new Set([...Object.keys(r),...Object.keys(l)])){const v=merge3(bb[k],l[k],r[k]);if(v!==undefined)o[k]=v}return o}
+  return l;
+}
+function arrKeys(a){const n={};return a.map(x=>{if(x&&typeof x==='object'){if(x.id!=null)return 'i'+x.id;if(x.acc!=null)return 'a'+x.acc;if(x.v!=null&&x.items)return 'v'+x.v}const j='j'+JSON.stringify(x);n[j]=(n[j]||0)+1;return j+'#'+n[j]})}
+function mergeArr(b,l,r){
+  const kb=arrKeys(b),kl=arrKeys(l),kr=arrKeys(r);const B=new Map(kb.map((k,i)=>[k,b[i]])),L=new Map(kl.map((k,i)=>[k,l[i]])),R=new Set(kr);
+  const out=[],seen=new Set();
+  r.forEach((x,i)=>{const k=kr[i];seen.add(k);if(L.has(k))out.push(merge3(B.get(k),L.get(k),x));else if(B.has(k)){if(!sameJ(B.get(k),x))out.push(x)}else out.push(x)});
+  l.forEach((x,i)=>{const k=kl[i];if(seen.has(k))return;if(B.has(k)&&!R.has(k)){if(!sameJ(B.get(k),x))out.push(x)}else out.push(x)});
+  return out;
+}
 function applyRemote(row){
   const key=row.col+':'+row.id;
-  if(row.col==='p'){const i=S.patients.findIndex(p=>p.id===row.id);const local=i>=0?JSON.stringify(S.patients[i]):null;
-    if(local!=null&&SHADOW[key]!==undefined&&local!==SHADOW[key])return false; // 本機有未上傳的修改，以本機為準
-    if(row.deleted){if(i>=0)S.patients.splice(i,1);delete SHADOW[key];return true}
-    const obj=JSON.parse(row.json);if(i>=0)S.patients[i]=obj;else S.patients.unshift(obj);SHADOW[key]=row.json;return true}
-  if(row.col==='kv'){const val=row.deleted?undefined:JSON.parse(row.json);const mk=MERGE_KEYS[row.id];
-    if(mk&&Array.isArray(val)&&Array.isArray(S[row.id])){const m=new Map(val.map(x=>[x[mk],x]));for(const x of S[row.id])if(!m.has(x[mk]))m.set(x[mk],x);S[row.id]=[...m.values()];if(row.id!=='users')S[row.id].sort((a,b)=>(b.at||0)-(a.at||0))}
-    else{const local=S[row.id]===undefined?undefined:JSON.stringify(S[row.id]);if(local!==undefined&&SHADOW[key]!==undefined&&local!==SHADOW[key])return false;S[row.id]=val}
-    SHADOW[key]=row.json;return true}
-  return false;
+  if(!row.deleted&&SHADOW[key]===sig(row.json))return false; // 已經是這個版本（多半是自己剛上傳的）
+  let cur,set;
+  if(row.col==='p'){const i=S.patients.findIndex(p=>p.id===row.id);cur=i>=0?S.patients[i]:undefined;
+    set=v=>{const j=S.patients.findIndex(p=>p.id===row.id);if(v===undefined){if(j>=0)S.patients.splice(j,1)}else if(j>=0)S.patients[j]=v;else S.patients.unshift(v)}}
+  else if(row.col==='kv'&&KV_KEYS.includes(row.id)){cur=S[row.id];set=v=>{if(v===undefined)delete S[row.id];else S[row.id]=v}}
+  else return false;
+  const lj=cur===undefined?undefined:JSON.stringify(cur);
+  const dirty=lj!==undefined&&SHADOW[key]!==sig(lj);
+  if(row.deleted){if(!dirty)set(undefined);delBase(key);return true} // 這台有改過 → 保留，之後再上傳
+  const remote=JSON.parse(row.json);
+  if(!dirty)set(remote);
+  else{const bj=BASE.get(key);let merged=merge3(bj?JSON.parse(bj):undefined,cur,remote);
+    if((row.id==='delLog'||row.id==='trash')&&Array.isArray(merged))merged.sort((a,b)=>(b.at||0)-(a.at||0));
+    set(merged)}
+  setBase(key,row.json);return true;
 }
 async function syncNow(opts={}){
   if(!syncOn())return;if(syncSt.busy){syncSt.again=true;return}
   syncSt.busy=true;syncSt.err='';paintSync();
   try{
-    // 1. 拉雲端
+    await baseReady;
+    // 1. 拉雲端（since 只依「拉下來的」時間前進，避免漏掉別台同時上傳的資料）
     const r=await api({action:'pull',since:opts.full?0:(SY.since||0)});let changed=false;
     for(const row of r.rows.sort((a,b)=>a.ts-b.ts))if(applyRemote(row))changed=true;
-    SY.since=Math.max(SY.since||0,r.ts||0);
-    // 2. 推本機
+    SY.since=Math.max(opts.full?0:(SY.since||0),r.ts||0);saveSY();
+    // 2. 推本機（分批，大量匯入也不會逾時）
     const ch=[];const seen=new Set();
-    for(const x of recs()){const key=x.col+':'+x.id;seen.add(key);if(await uploadImgs(x.obj,x.name))changed=true;const j=JSON.stringify(x.obj);if(SHADOW[key]!==j)ch.push({col:x.col,id:x.id,json:j,key})}
+    for(const x of recs()){const key=x.col+':'+x.id;seen.add(key);if(await uploadImgs(x.obj,x.name))changed=true;const j=JSON.stringify(x.obj);if(SHADOW[key]!==sig(j))ch.push({col:x.col,id:x.id,json:j,key})}
     for(const key of Object.keys(SHADOW))if(key.startsWith('p:')&&!seen.has(key))ch.push({col:'p',id:key.slice(2),deleted:true,key});
-    if(ch.length){const res=await api({action:'push',by:me()?me().name:'',changes:ch.map(c=>({col:c.col,id:c.id,json:c.json,deleted:c.deleted}))});for(const c of ch){if(c.deleted)delete SHADOW[c.key];else SHADOW[c.key]=c.json}SY.since=Math.max(SY.since,res.ts)}
-    syncSt.at=Date.now();saveSY();saveShadow();localSave();
+    const by=me()?me().name:'';
+    for(let k=0;k<ch.length;){let n=0,size=0;while(k+n<ch.length&&n<100&&size<1.5e6){size+=(ch[k+n].json||'').length;n++}
+      const part=ch.slice(k,k+n);if(ch.length>100){syncSt.prog=`上傳中 ${k}/${ch.length}`;paintSync()}
+      await api({action:'push',by,changes:part.map(c=>({col:c.col,id:c.id,json:c.json,deleted:c.deleted}))});
+      for(const c of part){if(c.deleted)delBase(c.key);else setBase(c.key,c.json)}saveShadow();k+=n}
+    syncSt.prog='';syncSt.at=Date.now();SY.ok=Date.now();saveSY();saveShadow();localSave();flushBase();
     if(changed&&!opts.quiet)softRender();
-  }catch(e){syncSt.err=e.message||String(e)}
+  }catch(e){syncSt.err=e.message||String(e);syncSt.prog=''}
   syncSt.busy=false;paintSync();
   if(syncSt.again){syncSt.again=false;setTimeout(()=>syncNow({quiet:true}),300)}
 }
 function softRender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)||document.getElementById('modal')){syncSt.pendingRender=true;return}render()}
 document.addEventListener('focusout',()=>{if(syncSt.pendingRender){setTimeout(()=>{const a=document.activeElement;if(!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))&&!document.getElementById('modal')){syncSt.pendingRender=false;render()}},400)}});
 function queueSync(){if(!syncOn())return;clearTimeout(syncSt.timer);syncSt.timer=setTimeout(()=>syncNow({quiet:true}),1500)}
-function paintSync(){const el=document.getElementById('syncdot');if(!el)return;el.className='syncdot '+(syncSt.err?'bad':syncSt.busy?'busy':'ok');el.title=syncSt.err?'同步失敗：'+syncSt.err:syncSt.busy?'同步中…':'已同步 '+(syncSt.at?new Date(syncSt.at).toTimeString().slice(0,5):'')}
+function paintSync(){const el=document.getElementById('syncdot');if(!el)return;el.className='syncdot '+(syncSt.err?'bad':syncSt.busy?'busy':'ok');el.title=syncSt.err?'同步失敗：'+syncSt.err:syncSt.busy?(syncSt.prog||'同步中…'):'已同步 '+(syncSt.at?new Date(syncSt.at).toTimeString().slice(0,5):'')}
 setInterval(()=>{if(syncOn()&&document.visibilityState==='visible')syncNow()},45000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&syncOn())syncNow()});
 function readLink(str){try{const [u,t]=decodeURIComponent(escape(atob(str))).split('|');return u&&t?{url:u,token:t}:null}catch(e){return null}}
 function applyLink(cfg,silent){
   if(!cfg)return false;if(SY.url===cfg.url&&SY.token===cfg.token)return true;
   try{if(S.patients.length||S.users.length)localStorage.setItem('lw-pre-cloud',JSON.stringify(S))}catch(e){}
-  S=blank();localSave();SY={url:cfg.url,token:cfg.token,since:0};SHADOW={};saveSY();saveShadow();
+  S=blank();localSave();SY={url:cfg.url,token:cfg.token,since:0};resetShadow();saveSY();
   if(!silent)setTimeout(()=>{toast('已連上診所雲端，正在下載資料…');syncNow({full:true}).then(()=>render())},200);return true;
 }
 (function fromLink(){const q=new URLSearchParams(location.search).get('c');const m=location.hash.match(/#sync=([^&]+)/);applyLink(readLink(q||(m&&m[1])||''))})();
@@ -515,7 +567,7 @@ function syncCard(){
 
 
 /* ========= 畫面 ========= */
-function go(name,o={}){V=Object.assign({name},o);render();window.scrollTo(0,0)}
+function go(name,o={}){if(name!==V.name||o.pid!==V.pid)delete tmp.x;V=Object.assign({name},o);render();window.scrollTo(0,0)}
 function render(){
   const app=document.getElementById('app');
   if(!S.me||!me()){document.body.classList.remove('authed');app.innerHTML=viewLogin();return}
@@ -780,7 +832,7 @@ function viewPatients(){
 function viewNewPatient(){
   const p=V.name==='editp'?P(V.pid):null;
   if(p&&tmp.x===undefined)tmp.x=p.xray;
-  const opt=(arr,sel)=>`<option value="">待補</option>`+arr.map(x=>`<option ${x===sel?'selected':''}>${h(x)}</option>`).join('');
+  const opt=(arr,sel)=>`<option value="">待補</option>`+(sel&&!arr.includes(sel)?[sel].concat(arr):arr).map(x=>`<option ${x===sel?'selected':''}>${h(x)}</option>`).join('');
   const v=k=>h(p?p[k]||'':'');
   return `${p?`<div class="row"><button class="btn sm" onclick="tmp.x=undefined;go('patient',{pid:'${p.id}'})">← ${h(p.name)}</button></div>`:''}
   <h1 ${p?'style="margin-top:12px"':''}>${p?'編輯病人資料':'新增病人'}</h1>
@@ -793,7 +845,7 @@ function viewNewPatient(){
    <label class="f" for="np-doc">主治醫師</label><select class="i" id="np-doc">${opt(DOCTORS,p?p.doctor:'')}</select>
    <div class="row"><div class="grow"><label class="f" for="np-con">諮詢師</label><select class="i" id="np-con">${opt(CONSULT,p?p.consult:'')}</select></div>
    <div class="grow"><label class="f" for="np-mgr">個案管理師</label><select class="i" id="np-mgr">${opt(CONSULT,p?p.mgr:'')}</select></div></div>
-   <label class="f" for="np-src">患者來源</label><select class="i" id="np-src">${opt(['原患者','FB','IG','Google','官網','同業介紹','親友介紹','患者介紹','其他'],p?p.src:'')}</select>
+   <label class="f" for="np-src">患者來源</label><select class="i" id="np-src">${opt(SRCS,p?p.src:'')}</select>
    <label style="display:block;margin-top:10px;font-size:14px"><input type="checkbox" id="np-nhis" ${p&&p.nhiSpecial?'checked':''}> 符合健保特殊族群（低收入戶、身心障礙、原住民族地區、偏遠離島，未滿 12 歲每 3 個月可塗氟）</label>
    <label class="f">全景 X 光</label>
    <div class="row"><label class="btn" for="np-x">上傳照片</label><input id="np-x" type="file" accept="image/*" hidden onchange="act.pickX(this)"><button class="btn" onclick="act.sampleX()">使用範例 X 光</button></div>
@@ -814,6 +866,7 @@ function viewPatient(){
   <div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">臨床照片</h2><label class="btn sm" for="pp-photo">＋上傳照片</label><input id="pp-photo" type="file" accept="image/*" multiple hidden onchange="act.addPhotos(this)"></div>
    ${(p.photos||[]).length?`<div class="vers">${p.photos.map(x=>`<div class="ver" style="padding:6px"><img src="${I(x.src)}" style="width:100%;border-radius:6px;display:block"><label style="font-size:13px;display:block;margin-top:4px"><input type="checkbox" ${x.use?'checked':''} onchange="act.photoUse('${x.id}',this.checked)"> 放入計畫書</label><button class="btn sm" style="margin-top:4px" onclick="act.del('photo','${x.id}')">移除</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">上傳時會自動壓縮，勾選的照片會放進計畫書。</p>'}</div>
   ${flowCards(p)}
+  ${legacyCard(p)}
   <div class="card"><div class="row" style="margin-bottom:10px"><h2 class="grow" style="margin:0">報價紀錄</h2><button class="btn pri sm" onclick="act.newQuote('${p.id}')">＋貼醫囑出報價</button></div>
    ${p.quotes.length?`<div class="vers">${p.quotes.slice().reverse().map(q=>`<button class="ver" onclick="go('plan',{pid:'${p.id}',v:${q.v}})"><b>第 ${q.v} 版</b>${q.altLabel?`<span class="muted">${h(altName(q.altLabel))}</span>`:''}<span class="muted">${h(q.date)}</span><div style="font-weight:700;color:var(--deep)">NT$ ${money(calc(p,q).total)}</div><span class="pill ${q.signed?'g':''}">${q.signed?'已簽名':'草稿'}</span></button>`).join('')}</div>`:'<p class="muted">還沒有報價。</p>'}
   </div>
@@ -842,6 +895,7 @@ function parseNV(t){
     out.push({id:'n'+Math.random().toString(36).slice(2,8),doc,task,raw:part,status:'none',dates:[],hold:null});}
   return out;
 }
+const isLegacy=p=>!!(p.legacy&&!p.quotes.length);
 function signedQ(p){return p.quotes.filter(q=>q.signed).at(-1)||null}
 function dcList(p){const q=signedQ(p)||p.quotes.at(-1);return q&&q.exams?q.exams.filter(id=>{const e=EXAMS.find(x=>x.id===id);return e&&e.type!=='nhi'}):[]}
 function docsOf(p){const s=new Set();if(p.doctor)s.add(p.doctor);for(const q of p.quotes)if(q.doctor)s.add(q.doctor);for(const n of (p.nv||[]))if(n.doc)s.add(n.doc);return [...s]}
@@ -870,6 +924,7 @@ function booked(p){return (p.nv||[]).some(n=>(n.dates||[]).length)||!!p.collect|
 function quoteLeft(q){return q.validDays-Math.floor((Date.now()-q.ts)/864e5)}
 function bucket(p){
   if(p.closed||p.done)return 'closed';
+  if(p.legacy&&p.legacy.stage==='tx'&&!p.quotes.length)return 'tx';
   const sq=signedQ(p);
   if(sq){if(booked(p))return 'tx';return sigISO(sq)===todayISO()?'won':'track'}
   if(p.trackDue||(p.track||[]).length)return 'track';
@@ -920,7 +975,7 @@ function viewPeople(key){
   if(!who){
     const row=(n,label)=>{const L=pool.filter(p=>n==='__none'?!p[key]:p[key]===n);return `<div class="it" onclick="go('${name}',{who:'${n}'})"><div class="grow"><b>${h(label)}</b><span class="muted">${keys.map(k=>BK[k].t+' '+L.filter(p=>bucket(p)===k).length).join('・')}</span></div><span class="pill ${n==='__none'?'y':''}">${L.length}</span></div>`};
     return `<h1>${title}</h1><p class="muted" style="margin-top:-6px">${cons?'療程開始以前的病人，依諮詢師分類':'療程中與已結案的病人，依個管師分類'}</p>
-    <div class="card list">${CONSULT.map(n=>row(n,n)).join('')}${pool.some(p=>!p[key])?row('__none','尚未指定'):''}</div>`;
+    <div class="card list">${CONSULT.map(n=>row(n,n)).join('')}${[...new Set(pool.map(p=>p[key]).filter(n=>n&&!CONSULT.includes(n)))].map(n=>row(n,n+'（待交接）')).join('')}${pool.some(p=>!p[key])?row('__none','尚未指定'):''}</div>`;
   }
   const list=pool.filter(p=>who==='__none'?!p[key]:p[key]===who);const k=keys.includes(V.bk)?V.bk:keys[0];
   return `<div class="row"><button class="btn sm" onclick="go('${name}')">← ${title}</button></div>
@@ -931,7 +986,8 @@ function allTodos(){
   const out=[];
   for(const p of S.patients){
     if(p.closed||p.done)continue;const q=p.quotes.at(-1);const b=bucket(p);const mg=p.mgr?'（個管：'+p.mgr+'）':'';
-    if(!p.teethDone&&!q)out.push({p,t:'待標牙位',c:'y',kind:'mark',to:()=>go('mark',{pid:p.id})});
+    if(isLegacy(p)){}
+    else if(!p.teethDone&&!q)out.push({p,t:'待標牙位',c:'y',kind:'mark',to:()=>go('mark',{pid:p.id})});
     else if(!q)out.push({p,t:'待貼醫囑',c:'y',to:()=>go('orders',{pid:p.id})});
     else if(!q.signed&&!signedQ(p)){const left=quoteLeft(q);
       if(left<0&&!p.trackDue)out.push({p,t:'報價已過期，請開始追蹤'+mg,c:'r',to:()=>go('patient',{pid:p.id})});
@@ -979,6 +1035,7 @@ function viewHome(){
 const scrollTo_=id=>`(document.getElementById('${id}')||{scrollIntoView(){}}).scrollIntoView({behavior:'smooth',block:'start'})`;
 function nextStep(p){
   if(p.closed||p.done)return null;
+  if(isLegacy(p)){const b=bucket(p);if(b==='track')return ['登記追蹤','act.trackOpen()'];if(b==='tx')return ['療程中',''];}
   const q=p.quotes.at(-1),sq=signedQ(p);
   if(!p.xray&&!p.panoNote)return ['上傳 Pano 或填寫未拍原因',scrollTo_('sec-pano')];
   if(!p.teethDone&&!q)return ['標牙位',`go('mark',{pid:'${p.id}'})`];
@@ -1035,13 +1092,14 @@ function caseStage(p){
   if(p.design&&p.design.status==='lack')return [p.redo&&p.redo.status==='cannot'?'病人無法回來補件':'資料不足・待補件','y'];
   if(p.collect)return p.collect.cloud?['待設計','y']:['資料收集中','y'];
   if(signedQ(p))return needsData(p)?['已成交・待資收','y']:['療程中','g'];
+  if(isLegacy(p)&&bucket(p)==='tx')return ['療程中（115 匯入）','g'];
   return [stageOf(p)[0],stageOf(p)[1]];
 }
 function flowTodos(){
   const out=[];const t=todayISO();
   for(const p of S.patients){
     if(p.closed||p.done)continue;const mg=p.mgr?'（個管：'+p.mgr+'）':'';const sq=signedQ(p);const go_=()=>go('patient',{pid:p.id});
-    if(!p.xray&&!p.panoNote&&!p.photosCleared)out.push({p,t:'尚未上傳 Pano',c:'r',to:go_});
+    if(!p.xray&&!p.panoNote&&!p.photosCleared&&!isLegacy(p))out.push({p,t:'尚未上傳 Pano',c:'r',to:go_});
     if(sq&&(p.nv||[]).length){const none=p.nv.filter(n=>n.status==='none').length;if(none&&booked(p))out.push({p,t:`NV ${p.nv.length} 項：已約 ${p.nv.filter(n=>n.status==='booked').length}、未約 ${none}${mg}`,c:'y',to:go_})}
     if(p.trackDue&&p.trackDue<=t)out.push({p,t:`追蹤第 ${(p.track||[]).length+1} 次：${p.trackWhy||''}${mg}`,c:p.trackDue<t?'r':'y',to:go_});
     if(sq&&needsData(p)&&!p.collect){const pl=p.collectPlan;out.push({p,t:pl?`預計 ${md(pl)} 資收${mg}`:`已成交・待安排資收${mg}`,c:pl&&pl<t?'r':'y',to:go_})}
@@ -1109,12 +1167,12 @@ function drCards(p){
 }
 function flowCards(p){
   const sq=signedQ(p);let out=drCards(p);
-  if(!p.xray&&!p.photosCleared){out+=`<div class="card" id="sec-pano" style="border-color:${p.panoNote?'var(--line)':'var(--bad)'}"><div class="row"><h2 class="grow" style="margin:0">${p.panoNote?'未拍 Pano：'+h(p.panoNote):'⚠ 尚未上傳 Pano'}</h2><button class="btn sm" onclick="tmp.x=undefined;go('editp',{pid:'${p.id}'})">上傳</button></div>
+  if(!p.xray&&!p.photosCleared&&!(isLegacy(p)&&!booked(p))){out+=`<div class="card" id="sec-pano" style="border-color:${p.panoNote?'var(--line)':'var(--bad)'}"><div class="row"><h2 class="grow" style="margin:0">${p.panoNote?'未拍 Pano：'+h(p.panoNote):'⚠ 尚未上傳 Pano'}</h2><button class="btn sm" onclick="tmp.x=undefined;go('editp',{pid:'${p.id}'})">上傳</button></div>
     <label class="f">無法拍攝的原因</label><div class="row"><select class="i grow" id="pn-r"><option value="">選擇原因</option>${NOPANO.map(x=>`<option ${p.panoNote&&p.panoNote.startsWith(x)?'selected':''}>${x}</option>`).join('')}</select><input class="i grow" id="pn-n" placeholder="備註"><button class="btn sm" onclick="act.panoNote()">儲存</button></div></div>`}
   if(sq||(p.nv||[]).length)out+=nvSection(p);
   if(sq&&needsData(p)){out+=dcSection(p)+designSection(p)+surgSection(p)}
   else if(sq&&(p.surgery||surgItems(p).length))out+=surgSection(p);
-  if(p.done)out+=`<div class="card"><div class="row"><h2 class="grow" style="margin:0">已結案</h2>${p.xray||(p.photos||[]).length?`<button class="btn sm" onclick="act.del('photos','${p.id}')">備份並移除照片</button>`:''}<button class="btn sm" onclick="act.reopen()">取消結案</button></div><p style="margin:6px 0 0">尾款日 ${md(p.done.pay)}・${h(p.done.by)}${p.done.note?'・'+h(p.done.note):''}</p></div>`;
+  if(p.done)out+=`<div class="card"><div class="row"><h2 class="grow" style="margin:0">已結案</h2>${p.xray||(p.photos||[]).length?`<button class="btn sm" onclick="act.del('photos','${p.id}')">備份並移除照片</button>`:''}<button class="btn sm" onclick="act.reopen()">取消結案</button></div><p style="margin:6px 0 0">${p.done.imported?'115 年諮詢表匯入・最後成交 '+md(p.done.pay):'尾款日 '+md(p.done.pay)+'・'+h(p.done.by)}${p.done.note&&!p.done.imported?'・'+h(p.done.note):''}</p></div>`;
   else if(bucket(p)==='tx')out+=`<div class="card"><div class="row"><b class="grow">療程都完成了嗎？</b><button class="btn sm" onclick="act.finish()">療程完成・登記尾款日</button></div></div>`;
   if(p.closed){const c=p.closed;out+=`<div class="card" style="border-color:var(--bad)"><h2>未成交結案</h2><p style="margin:0">原因：${h(c.reason)}・${h(c.at)}</p>${c.eval?`<p class="muted" style="margin:6px 0 0">自評表：${h(c.eval.main)}${c.eval.ours.length?'｜'+h(c.eval.ours.join('、')):''}${c.eval.traits.length?'｜病人特質：'+h(c.eval.traits.join('、')):''}</p>`:''}</div>`}
   else if((p.track||[]).length||p.trackDue||(p.quotes.length&&['track','open'].includes(bucket(p)))){out+=`<div class="card" id="sec-track"><div class="row"><h2 class="grow" style="margin:0">追蹤紀錄</h2><button class="btn sm pri" onclick="act.trackOpen()">登記追蹤</button></div>
@@ -1135,7 +1193,7 @@ function delInfo(kind,ref){
   if(kind==='patient'){const q=P(ref);return {label:`病人 ${q.name}（${q.chart||'無病歷號'}）整份資料`,trash:true,data:q,run(){S.patients=S.patients.filter(x=>x!==q);S.mkt=(S.mkt||[]).map(c=>c.pid===q.id?Object.assign(c,{pid:null}):c)},backup(){dlJSON(q,`${q.name}_病人資料備份_${todayISO()}`)},after(){tmp={};go('patients')}}}
   if(kind==='mktVisit'){const c=S.mkt.find(x=>x.id===V.mid);const v=c.visits.find(x=>x.id===ref);return {label:`行銷 case ${c.name}｜回診 ${v.date}`,trash:true,data:v,mid:c.id,run(){c.visits=c.visits.filter(x=>x!==v)},backup(){dlJSON({行銷case:c.name,回診:v},`${c.name}_回診備份_${todayISO()}`)}}}
   if(kind==='itemImg'){const it=priceOf(ref);const L=(S.itemImgs[ref]||[]);return {label:`價目表圖片：${it?it.name:ref}（${L.length} 張）`,trash:false,run(){delete S.itemImgs[ref]},backup(){dlImgs(L,`${it?it.name:ref}_圖片備份_${todayISO()}`)}}}
-  if(kind==='reset')return {label:'這台裝置上的全部資料（帳號、病人、報價）'+(syncOn()?'，並中斷雲端連線（雲端資料不會被刪除）':''),trash:false,run(){localStorage.removeItem(KEY);S=blank();tmp={};SY={};SHADOW={};saveSY();saveShadow()},backup(){dlJSON(S,`立威試用資料備份_${todayISO()}`)},after(){render()}};
+  if(kind==='reset')return {label:'這台裝置上的全部資料（帳號、病人、報價）'+(syncOn()?'，並中斷雲端連線（雲端資料不會被刪除）':''),trash:false,run(){localStorage.removeItem(KEY);S=blank();tmp={};SY={};resetShadow();saveSY()},backup(){dlJSON(S,`立威試用資料備份_${todayISO()}`)},after(){render()}};
   return null;
 }
 function logP(p,t){p.log=p.log||[];p.log.unshift({at:new Date().toLocaleString('zh-TW',{hour12:false}),by:me()?me().name:'',t})}
@@ -1404,7 +1462,7 @@ function nvFrom(text,ord){
   if(!o.visits&&(m=s.match(/(\d)(?:\s*-\s*(\d))?\s*次/)))o.visits=+(m[2]||m[1]);
   if((m=s.match(/(\d)(?:\s*-\s*(\d))?\s*(w|週|周)(?![a-z])/i)))o.when=(m[2]?m[1]+'–'+m[2]:m[1])+' 週後';
   if(/一個月後|1\s*個月後/.test(s))o.when='一個月後';
-  if((m=s.match(/(?<!\d)(\d{1,2})\/(\d{1,2})(?:\s*(\d{1,2}:\d{2}))?/))){const y=new Date().getFullYear();o.date=`${y}-${String(+m[1]).padStart(2,'0')}-${String(+m[2]).padStart(2,'0')}`;if(m[3])o.time=m[3]}
+  if((m=s.match(/(?<!\d)(\d{1,2})\/(\d{1,2})(?:\s*(\d{1,2}:\d{2}))?/))){const nw=new Date();const y=nw.getFullYear()+(+m[1]<nw.getMonth()+1-6?1:0);o.date=`${y}-${String(+m[1]).padStart(2,'0')}-${String(+m[2]).padStart(2,'0')}`;if(m[3])o.time=m[3]}
   if((m=s.match(/收\s*\$?\s*(\d{3,6})|\((\d{3,6})\)/)))o.fee=+(m[1]||m[2]);
   if(/收.{0,6}訂/.test(s))o.deposit=true;
   o.eval=/評估|refer|轉診|轉.{0,6}(醫師|醫生)|諮詢/i.test(s);
@@ -1995,12 +2053,13 @@ function drawChartsInPlan(){const p=P(V.pid);const q=p&&quoteOf(p,V.v);if(!q)ret
 function viewSettings(){
   const u=me();const admin=u.role==='管理員';
   return `<h1>設定</h1>${syncCard()}
-  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span></div>${admin?`${x.acc!==u.acc?`<select onchange="act.role('${h(x.acc)}',this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link('${h(x.acc)}',this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
+  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span></div>${admin?`${x.acc!==u.acc?`<select onchange="act.role(${js(x.acc)},this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link(${js(x.acc)},this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
    ${admin?`<p class="muted" style="margin:8px 0 0">診所註冊碼：${REG_CODE}（正式版可在這裡更換）</p>`:''}</div>
   <div class="card"><div class="row"><div class="grow"><h2 style="margin:0">價目表</h2><span class="muted">${h(S.priceDate||'')} 起使用・${S.prices.length} 項${S.priceDraft?'・有一份'+PST[S.priceDraft.status][0]:''}</span></div><button class="btn pri sm" onclick="go('prices')">打開價目表</button></div>
-   ${admin?`<label class="f">可以編輯價目表的人</label><div class="row">${S.users.filter(x=>x.role!=='管理員').map(x=>`<label style="font-size:14px"><input type="checkbox" ${x.priceEdit?'checked':''} onchange="act.prPerm('${h(x.acc)}',this.checked)"> ${h(x.name)}</label>`).join('')||'<span class="muted">還沒有其他帳號</span>'}</div><p class="muted" style="margin:4px 0 0">管理員本來就可以編輯；只有「院長」角色可以審核通過。</p>`:''}</div>
+   ${admin?`<label class="f">可以編輯價目表的人</label><div class="row">${S.users.filter(x=>x.role!=='管理員').map(x=>`<label style="font-size:14px"><input type="checkbox" ${x.priceEdit?'checked':''} onchange="act.prPerm(${js(x.acc)},this.checked)"> ${h(x.name)}</label>`).join('')||'<span class="muted">還沒有其他帳號</span>'}</div><p class="muted" style="margin:4px 0 0">管理員本來就可以編輯；只有「院長」角色可以審核通過。</p>`:''}</div>
   ${admin?`<div class="card"><h2>最近刪除（30 天內可復原）</h2>${(S.trash||[]).length?`<div class="list">${S.trash.map(t=>`<div class="it"><div class="grow"><b>${h(t.label)}</b><span class="muted">${new Date(t.at).toLocaleString('zh-TW',{hour12:false})}・${h(t.by)}</span></div><button class="btn sm" onclick="act.restore('${t.id}')">復原</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">沒有可復原的資料。</p>'}
    ${(S.delLog||[]).length?`<details style="margin-top:10px"><summary class="muted">刪除紀錄（90 天）</summary>${S.delLog.map(x=>`<div class="muted" style="font-size:13px">${new Date(x.at).toLocaleString('zh-TW',{hour12:false})}・${h(x.by)}・${h(x.label)}・${x.backup?'有備份':'沒有備份'}</div>`).join('')}</details>`:''}</div>`:''}
+  ${admin?legacySettingsCard():''}
   ${admin?`<div class="card"><h2>資料存放</h2>${syncOn()?`<p style="margin:0 0 6px">✓ 資料與照片都存在<b>診所 Google 雲端</b>（試算表＋雲端硬碟），會自動保存。</p>${usage().pct>=80?`<p style="margin:0 0 6px;color:var(--bad)">這台裝置的暫存空間快滿了（${usage().pct}%），請按「立即同步」後重新整理。</p>`:''}`:`<p style="margin:0 0 6px">尚未連上診所雲端，資料只存在這台裝置（已用 ${usage().mb.toFixed(1)} MB，約 ${usage().pct}%）。</p><div class="bar"><i style="width:${usage().pct}%;background:${usage().pct>=80?'var(--bad)':'var(--orange)'}"></i></div>`}
    <div class="row" style="margin-top:10px"><button class="btn ${syncOn()?'':'pri'}" onclick="act.exportAll()">匯出備份</button><label class="btn" for="imp-f">匯入備份</label><input id="imp-f" type="file" accept=".json,application/json" hidden onchange="act.importAll(this)"></div>
    <p class="muted" style="margin:6px 0 0">${syncOn()?'雲端已經自動保存；「匯出備份」是額外再下載一份到這台電腦（照片仍在雲端硬碟）。':'備份檔包含帳號、病人、報價和照片。換手機或資料不見時，可以用「匯入備份」還原。'}</p>
@@ -2014,7 +2073,7 @@ const act={
     const acc=document.getElementById('acc').value.trim(),pw=document.getElementById('pw').value;
     tmp.acc=acc;tmp.pw=pw;
     if(!acc||!pw)return toast('請輸入帳號和密碼');
-    if(syncOn()&&!syncSt.at){syncNow({full:!SY.since});return toast('正在下載診所雲端資料，請等幾秒再按登入')}
+    if(syncOn()&&!syncSt.at&&!SY.ok&&!(syncSt.err&&S.users.length)){syncNow({full:!SY.since});return toast(syncSt.err?'連不上診所雲端：'+syncSt.err+'，請確認網路後再按一次':'正在下載診所雲端資料，請等幾秒再按登入')}
     const u=S.users.find(x=>x.acc.toLowerCase()===acc.toLowerCase());
     if(u){if(u.pw!==hash(pw))return toast('密碼不正確');S.me=u.acc;tmp={};save();go('home');return}
     if(!tmp.reg){tmp.reg=true;render();return}
@@ -2052,7 +2111,7 @@ const act={
     save();render();
   },
   editor(inp){const f=inp.files[0];if(!f)return;if(!window.XLSX)return toast('讀取工具載入中，請稍後再試');
-    const m=+document.getElementById('e-month').value;const y=new Date().getFullYear();
+    const m=+document.getElementById('e-month').value;const nw=new Date();const y=nw.getFullYear()+(m<nw.getMonth()+1-6?1:0);
     f.arrayBuffer().then(buf=>{const wb=XLSX.read(buf,{bookFiles:true});const r=parseEditor(wb,y,m);
       if(r.err){toast(r.err);return}
       S.editor=Object.assign(r,{uploaded:today(),by:me().name});save();toast(m+' 月小編班表已上傳');go('home')}).catch(()=>toast('Excel 讀取失敗，請確認檔案格式'))},
@@ -2148,17 +2207,17 @@ const act={
     save();closeModal();toast(keep?'已下載備份並刪除':'已刪除');if(D.after)D.after();else render()},
   restore(id){modal(`<h2>復原</h2><p>${h((S.trash.find(x=>x.id===id)||{}).label||'')}</p><label class="f">刪除密碼</label><input class="i" type="password" id="rs-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.doRestore('${id}')">復原</button></div>`)},
   doRestore(id){if(document.getElementById('rs-pw').value!==DEL_PW)return toast('密碼不正確');const t=S.trash.find(x=>x.id===id);if(!t)return;
-    if(t.kind==='patient')S.patients.unshift(t.data);else if(t.kind==='nv'){const p=P(t.pid);if(!p)return toast('病人已不存在');p.nv=p.nv||[];p.nv.push(t.data);fixTrack(p)}else if(t.kind==='mktVisit'){const c=(S.mkt||[]).find(x=>x.id===t.mid);if(!c)return toast('行銷 case 已不存在');c.visits.push(t.data)}
+    if(t.kind==='patient'){const i=S.patients.findIndex(x=>x.id===t.data.id);if(i>=0)S.patients[i]=t.data;else S.patients.unshift(t.data)}else if(t.kind==='nv'){const p=P(t.pid);if(!p)return toast('病人已不存在');p.nv=p.nv||[];p.nv.push(t.data);fixTrack(p)}else if(t.kind==='mktVisit'){const c=(S.mkt||[]).find(x=>x.id===t.mid);if(!c)return toast('行銷 case 已不存在');c.visits.push(t.data)}
     S.trash=S.trash.filter(x=>x!==t);S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:me().name,label:'復原：'+t.label,backup:true});save();closeModal();toast('已復原');render()},
   syncPaste(){const v=(document.getElementById('lk-u').value||'').trim();let m=v.match(/[?&]c=([^&#\s]+)/);let cfg=m?readLink(decodeURIComponent(m[1])):null;if(!cfg){m=v.match(/#sync=([^&\s]+)/);cfg=m?readLink(m[1]):null}if(!cfg)return toast('這不是診所的連線網址，請重新複製');applyLink(cfg);render()},
   async syncTest(){const u=document.getElementById('sy-u').value.trim(),t=document.getElementById('sy-t').value.trim();if(!u||!t)return toast('請填網址和金鑰');const old=SY;SY={url:u,token:t};try{await api({action:'ping'});toast('連線成功 ✓')}catch(e){toast('連線失敗：'+e.message)}SY=old},
   async syncConnect(){const u=document.getElementById('sy-u').value.trim(),t=document.getElementById('sy-t').value.trim();if(!u||!t)return toast('請填網址和金鑰');
     SY={url:u,token:t,since:0};let r;try{r=await api({action:'pull',since:0})}catch(e){SY={};return toast('連線失敗：'+e.message)}
     if(r.rows.length){modal(`<h2>雲端已經有資料</h2><p>雲端已有 ${r.rows.filter(x=>x.col==='p'&&!x.deleted).length} 位病人。要用雲端的資料取代這支手機的資料嗎？這支手機目前的資料會先自動下載一份備份。</p><div class="row"><button class="btn grow" onclick="SY={};closeModal()">取消</button><button class="btn pri grow" onclick="act.syncAdopt()">使用雲端資料</button></div>`)}
-    else{SHADOW={};saveSY();saveShadow();toast('連線成功，正在把這支手機的資料上傳到雲端…');await syncNow();toast(syncSt.err?'上傳失敗：'+syncSt.err:'已上傳到雲端 ✓');render()}},
-  async syncAdopt(){closeModal();dlJSON(S,`連雲端前自動備份_${todayISO()}`);const meAcc=S.me;S=blank();S.me=meAcc;SHADOW={};SY.since=0;saveSY();saveShadow();await syncNow({full:true});if(!S.users.some(u=>u.acc===S.me))S.me=null;localSave();toast(syncSt.err?'下載失敗：'+syncSt.err:'已下載雲端資料 ✓');render()},
+    else{resetShadow();saveSY();toast('連線成功，正在把這支手機的資料上傳到雲端…');await syncNow();toast(syncSt.err?'上傳失敗：'+syncSt.err:'已上傳到雲端 ✓');render()}},
+  async syncAdopt(){closeModal();dlJSON(S,`連雲端前自動備份_${todayISO()}`);const meAcc=S.me;S=blank();S.me=meAcc;resetShadow();SY.since=0;saveSY();await syncNow({full:true});if(!S.users.some(u=>u.acc===S.me))S.me=null;localSave();toast(syncSt.err?'下載失敗：'+syncSt.err:'已下載雲端資料 ✓');render()},
   syncShare(){const l=syncLink();modal(`<h2>給同事的連線網址</h2><p class="muted">同事用任何方式打開這個網址（LINE、Safari、Chrome、主畫面都可以）就會自動連上，再用自己的帳號登入；也可以在登入頁貼上這個網址。iPhone 建議用 Safari 打開後「加入主畫面」。<b>這個網址包含金鑰，只傳給診所同事。</b></p><textarea class="i" id="sl-t" style="min-height:90px">${h(l)}</textarea><div class="row" style="margin-top:10px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="const t=document.getElementById('sl-t');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})">複製</button></div>`)},
-  syncOff(){modal(`<h2>中斷雲端連線？</h2><p class="muted">這支手機會停止同步，雲端資料不受影響。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="SY={};SHADOW={};saveSY();saveShadow();closeModal();render()">中斷</button></div>`)},
+  syncOff(){modal(`<h2>中斷雲端連線？</h2><p class="muted">這支手機會停止同步，雲端資料不受影響。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="SY={};resetShadow();saveSY();closeModal();render()">中斷</button></div>`)},
   newQuote(pid){tmp.q2=null;tmp.editV=null;tmp.promo=false;go('orders',{pid})},
   parse(){
     const text=document.getElementById('ord').value;if(!text.trim())return toast('請先貼上醫囑');
@@ -2180,7 +2239,7 @@ const act={
   prPublishOpen(){const D=S.priceDraft;modal(`<h2>更新上線</h2><p>以下內容與價格會同步更新到系統（醫囑解析、報價、計畫書都會改用新價目表）。已經出過的報價和簽過的計畫書不會改變。</p><div class="card" style="max-height:40vh;overflow:auto">${diffHTML(priceDiff(S.prices,D.prices))}</div>
    <label style="display:block;margin:10px 0;font-size:15px"><input type="checkbox" id="pp-ok"> 我已確認以上內容與價格，系統同步修改</label><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.prPublish()">更新上線</button></div>`)},
   prPublish(){if(!document.getElementById('pp-ok').checked)return toast('請先勾選確認');const D=S.priceDraft;S.priceVersions=S.priceVersions||[];
-    S.priceVersions.unshift({ver:S.priceDate||'',date:S.priceDate||'',by:S.priceBy||'',approvedBy:S.priceApprover||'',note:'更新前自動備份',prices:S.prices,imgs:S.itemImgs,file:S.priceFile||null});S.priceFile=null;
+    S.priceVersions.unshift({ver:S.priceDate||'',date:S.priceDate||'',by:S.priceBy||'',approvedBy:S.priceApprover||'',note:'更新前自動備份',prices:S.prices,imgs:S.itemImgs,file:S.priceFile||null});S.priceVersions=S.priceVersions.slice(0,20);S.priceFile=null;
     S.prices=D.prices.filter(x=>!x.removed).map(x=>{delete x.removed;return x});S.itemImgs=D.imgs||{};S.priceDate=today();S.priceBy=me().name;S.priceApprover=D.approvedBy;S.priceDraft=null;_cand=null;save();closeModal();toast('價目表已更新上線');go('prices')},
   prFile(inp){const f=inp.files[0];if(!f)return;if(f.size>15e6)return toast('檔案太大（上限 15MB）');const fr=new FileReader();fr.onload=()=>{S.priceFile={name:f.name,src:fr.result,at:today(),by:me().name};save();toast(syncOn()?'已上傳，正在存到診所雲端…':'已上傳到這支手機');render()};fr.readAsDataURL(f)},
   async prFileOpen(w){const F=w==='cur'?S.priceFile:(S.priceVersions[w]||{}).file;if(!F)return;const win=window.open('','_blank');try{const d=await imgData(F.src);const b=await (await fetch(d)).blob();const u=URL.createObjectURL(b);if(win)win.location=u;else location.href=u}catch(e){if(win)win.close();toast('打不開檔案：'+e.message)}},
@@ -2211,14 +2270,14 @@ const act={
     for(const i of all){if(i.orig!=null&&i.price!==i.orig)log.push(`${today()} ${u.name}：${i.name} ${money(i.orig)} → ${money(i.price)}，原因：${i.reason}`);
       else if(i.list!=null&&i.price!=null&&i.list>i.price&&!i.gift)log.push(`${today()} 醫囑價格：${i.name} 收費標準 ${money(i.list)} → ${money(i.price)}`);}
     if(q.rate&&q.disc==='rate')log.push(`${today()} 醫囑折數：${Math.round(q.rate*100)} 折`);
-    const variants=(q.alts||[]).length?q.alts.map(a=>({label:a.label,items:q.items.concat(a.items)})):[{label:'',items:q.items}];
+    const variants=(q.alts||[]).length?q.alts.map(a=>({label:a.label,items:q.items.concat(a.items)})):[{label:q.altLabel||'',items:q.items}];const grp=variants.length>1?'g'+Date.now().toString(36):(q.altGroup||null);
     let firstV=null;
     variants.forEach((vt,k)=>{
       let v,prevLog=[];
       if(tmp.editV&&k===0){const old=quoteOf(p,tmp.editV);if(old&&!old.signed){v=old.v;prevLog=old.log;p.quotes=p.quotes.filter(x=>x!==old)}else v=Math.max(0,...p.quotes.map(x=>x.v))+1}
       else v=Math.max(0,...p.quotes.map(x=>x.v))+1;
       const base=JSON.parse(JSON.stringify(q));delete base.lines;
-      const nq=Object.assign(base,{items:JSON.parse(JSON.stringify(vt.items)),alts:[],altLabel:vt.label,altOf:variants.length>1?variants.length:0,v,date:q.date||today(),ts:Date.now(),until:addDays(q.validDays),signed:false,sign:null,log:prevLog.concat(log),by:u.name});
+      const nq=Object.assign(base,{items:JSON.parse(JSON.stringify(vt.items)),alts:[],altLabel:vt.label,altOf:variants.length>1?variants.length:(q.altOf||0),altGroup:grp,v,date:q.date||today(),ts:Date.now(),until:addDays(q.validDays),signed:false,sign:null,log:prevLog.concat(log),by:u.name});
       p.quotes.push(nq);if(firstV==null)firstV=v;
     });
     p.quotes.sort((a,b)=>a.v-b.v);
@@ -2247,7 +2306,7 @@ const act={
   addPhotos(inp){const p=P(V.pid);const fs=[...inp.files];if(!fs.length)return;p.photos=p.photos||[];
     Promise.all(fs.map(f=>compress(f,1000,0.6))).then(ds=>{for(const d of ds)p.photos.push({id:'ph'+Date.now()+Math.random().toString(36).slice(2,6),src:d,use:true});save();toast('已加入 '+ds.length+' 張照片');render()}).catch(()=>toast('照片讀取失敗'))},
   photoUse(id,on){const p=P(V.pid);const x=p.photos.find(y=>y.id===id);x.use=on;save()},
-  signOpen(){modal(`<h2>病人簽名</h2><p class="muted">請病人在下方框內簽名。</p><canvas class="pad" id="pad"></canvas>
+  signOpen(){const sp=P(V.pid),sq=sp&&quoteOf(sp,V.v);if(sq&&sq.altGroup){const o=sp.quotes.find(x=>x!==sq&&x.altGroup===sq.altGroup&&x.signed);if(o)return toast(`同一次報價的第 ${o.v} 版（${altName(o.altLabel)}）已經簽名，不能兩個方案都簽`)}modal(`<h2>病人簽名</h2><p class="muted">請病人在下方框內簽名。</p><canvas class="pad" id="pad"></canvas>
    <div class="row" style="margin-top:12px"><button class="btn" onclick="act.signClear()">清除</button><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.signSave()">完成簽名</button></div>`);setupPad()},
   signClear(){const c=document.getElementById('pad');c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.ink=''},
   signSave(){const c=document.getElementById('pad');if(!c.dataset.ink)return toast('請先簽名');const p=P(V.pid);const q=quoteOf(p,V.v);q.sign=c.toDataURL('image/png');q.signed=true;q.witness=me().name;q.signedAt=today();q.log.push(`${today()} 病人完成簽名，此版本已鎖定`);p.nv=p.nv||[];for(const n of (q.nv||[]))if(!p.nv.some(x=>x.task===n.task&&x.doc===n.doc))p.nv.push(JSON.parse(JSON.stringify(n)));if(!p.nv.length)p.nv.push({id:'n'+Date.now(),doc:q.doctor||p.doctor||'',task:'下次治療',status:'none',dates:[],hold:null});logP(p,'第 '+q.v+' 版病人簽名');save();closeModal();toast('簽名完成，此版本已鎖定');render();act.afterSign()},
@@ -2264,7 +2323,7 @@ const act={
   exportAll(){dlJSON(Object.assign({},S,{me:null,_exported:new Date().toISOString()}),`立威試用資料備份_${todayISO()}`);S.lastBackup=today();save();toast('已下載備份檔');render()},
   importAll(inp){const f=inp.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{let d;try{d=JSON.parse(fr.result)}catch(e){return toast('這不是備份檔')}if(!d||!d.users||!d.patients)return toast('這不是備份檔');tmp.imp=d;
     modal(`<h2>匯入備份</h2><p>備份裡有 ${d.patients.length} 位病人、${d.users.length} 個帳號。匯入後會<b>取代</b>這支手機目前的資料（目前的資料會先自動下載一份備份）。</p><label class="f">刪除密碼</label><input class="i" type="password" id="im-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doImport()">匯入</button></div>`)};fr.readAsText(f)},
-  doImport(){if(document.getElementById('im-pw').value!==DEL_PW)return toast('密碼不正確');const cur=S.me;dlJSON(S,`匯入前自動備份_${todayISO()}`);S=tmp.imp;S.me=S.users.some(u=>u.acc===cur)?cur:null;tmp={};save();closeModal();toast('已匯入備份');render()},
+  doImport(){if(document.getElementById('im-pw').value!==DEL_PW)return toast('密碼不正確');if(syncOn())return toast('連著診所雲端時不能匯入備份（會覆蓋全院資料），請先中斷連線');const cur=S.me;dlJSON(S,`匯入前自動備份_${todayISO()}`);S=tmp.imp;S.me=S.users.some(u=>u.acc===cur)?cur:null;tmp={};save();closeModal();toast('已匯入備份');render()},
   finish(){const p=P(V.pid);modal(`<h2>療程完成・結案</h2><label class="f">尾款日</label><input class="i" type="date" id="fn-d" value="${todayISO()}"><input class="i" id="fn-n" placeholder="備註（選填）" style="margin-top:6px"><p class="muted">結案後會移到「已結案」。尾款日滿 30 天，系統會提醒備份並移除照片。</p><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.finishSave()">結案</button></div>`)},
   finishSave(){const p=P(V.pid);const d=document.getElementById('fn-d').value;if(!d)return toast('請選擇尾款日');p.done={pay:d,note:document.getElementById('fn-n').value.trim(),at:today(),by:me().name};p.trackDue=null;logP(p,'療程完成結案，尾款日 '+d);save();closeModal();toast('已結案');render()},
   reopen(){const p=P(V.pid);logP(p,'取消結案');delete p.done;save();render()},
@@ -2295,6 +2354,114 @@ function sampleXray(){
   x.fillStyle='rgba(255,255,255,.75)';x.font='bold 26px sans-serif';x.fillText('R',24,610);x.font='16px sans-serif';x.fillText('範例 X 光（示意）',60,610);
   _sx=c.toDataURL('image/jpeg',0.8);return _sx;
 }
+
+/* ========= 匯入舊資料：115 年全院自費諮詢表 ========= */
+const SRCS=['原患者','親友介紹','患者介紹','住附近','路過','指定醫師','官網','Google','FB','IG','YouTube','Threads','Dcard','部落客','廣告招牌','同業介紹','他院轉診','醫師他院','院內轉診','其他'];
+const SRC_ALIAS={google:'Google',youtube:'YouTube',dcard:'Dcard',fb:'FB',ig:'IG',threads:'Threads'};
+const LG_CLS={'1':'當場成交','2':'成交機會高','3':'成交機會中','4':'成交機會低','重新約回':'重新約回','取消預約':'取消預約'};
+const LG_ST={V:['成交','g'],X:['未成交','r'],'∆':['考慮中','y']};
+const LG_BIG=['植牙','全口重建','成人矯正','兒童矯正'],LG_MID=['贗復','根管','牙周'];
+const LG_STAGE={tx:'療程中',track:'追蹤中',done:'已結案',closed:'未成交結案'};
+function lgName(v){v=String(v||'').replace(/\s/g,'');if(!v||/^(醫師|櫃檯|櫃台|診所|none)$/i.test(v))return '';if(CONSULT.includes(v))return v;if(CONSULT.includes(v.slice(1)))return v.slice(1);return v.length===3?v.slice(1):v}
+function lgNum(v){if(v==null||v==='')return null;if(typeof v==='number')return v;const m=String(v).replace(/,/g,'').match(/\d+(\.\d+)?/);return m?+m[0]:null}
+function lgDate(v){if(Object.prototype.toString.call(v)==='[object Date]'&&!isNaN(v))return iso(new Date(v.getTime()+43200000));if(typeof v==='number'&&v>30000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return d.toISOString().slice(0,10)}const m=String(v||'').match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);return m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`:''}
+const lgTxt=v=>v==null?'':String(v).trim();
+function lgSrc(v){v=lgTxt(v);if(!v||v==='None')return '';return SRC_ALIAS[v.toLowerCase()]||v}
+// 讀 Excel → 每一列一筆諮詢
+function lgRead(wb){
+  let best=null;
+  for(const n of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null});
+    const hi=rows.findIndex(r=>r&&r.some(c=>lgTxt(c)==='病歷號')&&r.some(c=>lgTxt(c)==='姓名'));if(hi<0)continue;
+    if(!best||n.includes('諮詢'))best={name:n,rows,hi}}
+  if(!best)return null;
+  const H=best.rows[best.hi].map(lgTxt);const col=k=>H.findIndex(x=>x===k||x.startsWith(k));
+  const C={date:col('到店諮詢'),mgr:col('負責個管'),con:col('諮詢人員'),chart:col('病歷號'),birth:col('西元生日'),name:col('姓名'),job:col('職業'),area:col('地區'),doc:col('醫師'),tx:col('自費療程'),cat:col('自費項目'),cls:col('分類'),st:col('成單狀態'),src:col('來源'),dep:col('訂金'),quote:col('報價金額'),deal:col('成單金額'),note:col('備註'),follow:col('追蹤備註')};
+  const out=[],skip=[];
+  best.rows.slice(best.hi+1).forEach((r,i)=>{if(!r||!r.some(c=>c!=null&&c!==''))return;const g=k=>C[k]>=0?r[C[k]]:null;
+    const chart=lgTxt(g('chart')),name=lgTxt(g('name')).replace(/\s+/g,'');
+    if(!chart||!name){skip.push(best.hi+i+2);return}
+    let cls=lgTxt(g('cls'));if(/^\d(\.0+)?$/.test(cls))cls=String(parseInt(cls));
+    const follow=[];if(C.follow>=0)for(let c=C.follow;c<r.length;c++){const t=lgTxt(r[c]);if(t&&t!=='None')follow.push(t)}
+    const rawCon=lgTxt(g('con'));
+    out.push({date:lgDate(g('date')),mgr:lgName(g('mgr')),mgrRaw:lgTxt(g('mgr')),con:lgName(rawCon),conRaw:rawCon,chart,name,birth:lgTxt(g('birth')),job:lgTxt(g('job')),area:lgTxt(g('area')),doc:lgTxt(g('doc')).replace(/^None$/,''),
+      tx:lgTxt(g('tx')),cat:lgTxt(g('cat')).replace(/^None$/,''),cls,st:lgTxt(g('st')).replace('Δ','∆'),src:lgSrc(g('src')),dep:lgNum(g('dep')),quote:lgNum(g('quote')),quoteT:typeof g('quote')==='string'?lgTxt(g('quote')):'',deal:lgNum(g('deal')),note:lgTxt(g('note')),follow})});
+  return {sheet:best.name,recs:out,skip};
+}
+// 依規則判斷這位病人現在的狀態
+function lgStage(recs,now){
+  const t=iso(now),d30=addISO(t,-30),d91=addISO(t,-91);const done=r=>/已完成/.test(r.note+' '+r.follow.join(' '));
+  const V=recs.filter(r=>r.st==='V');
+  let r=V.filter(r=>LG_BIG.includes(r.cat)&&!done(r)).at(-1);if(r)return {k:'tx',why:'今年成交：'+r.cat,r};
+  r=V.filter(r=>LG_MID.includes(r.cat)&&!done(r)&&r.date>=d30).at(-1);if(r)return {k:'tx',why:'近 1 個月成交：'+r.cat,r};
+  r=recs.filter(r=>r.st==='∆').at(-1);if(r)return {k:'track',why:'考慮中',r};
+  if(!V.length){r=recs.filter(r=>r.st==='X'&&['2','3'].includes(r.cls)&&r.date>=d91).at(-1);if(r)return {k:'track',why:'未成交（'+LG_CLS[r.cls]+'）',r}}
+  if(V.length)return {k:'done',why:'其他成交',r:V.at(-1)};
+  return {k:'closed',why:'未成交',r:recs.at(-1)};
+}
+function lgPlan(data,now){
+  const by={};for(const r of data.recs)(by[r.chart]=by[r.chart]||[]).push(r);
+  const items=[];const cnt={tx:0,track:0,done:0,closed:0};let upd=0,mergeApp=0;
+  for(const [chart,recs] of Object.entries(by)){recs.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const st=lgStage(recs,now);const ex=S.patients.find(p=>p.chart===chart);
+    if(ex&&ex.legacy)upd++;else if(ex)mergeApp++;else cnt[st.k]++;
+    items.push({chart,recs,st,ex:ex?ex.id:null})}
+  return {sheet:data.sheet,skip:data.skip,items,cnt,upd,mergeApp,rows:data.recs.length};
+}
+function lgRec(r){const o={date:r.date,cls:r.cls,st:r.st,cat:r.cat,tx:r.tx,doc:r.doc,con:r.con||({醫師:'醫師直接諮詢',櫃檯:'櫃檯諮詢',櫃台:'櫃檯諮詢'}[r.conRaw]??r.conRaw),mgr:r.mgr||(r.mgrRaw==='診所'?'診所（未指定）':r.mgrRaw),src:r.src};for(const k of ['dep','quote','deal'])if(r[k])o[k]=r[k];if(r.quoteT&&r.quote==null)o.quoteT=r.quoteT;if(r.note&&r.note!=='無')o.note=r.note;if(r.follow.length)o.follow=r.follow;return o}
+function lgApply(plan,now){
+  const t=iso(now),who=me()?me().name:'匯入';const dot=s=>String(s||'').replace(/-/g,'.');let n=0;
+  for(const it of plan.items){const recs=it.recs,last=recs.at(-1);const lp=(k)=>{for(let i=recs.length-1;i>=0;i--)if(recs[i][k])return recs[i][k];return ''};
+    const legacy={from:'115 年全院自費諮詢表',at:t,recs:recs.map(lgRec),stage:it.st.k,why:it.st.why};
+    let p=it.ex?P(it.ex):null;
+    if(p){p.legacy=Object.assign({},p.legacy||{},{from:legacy.from,at:t,recs:legacy.recs});if(!p.legacy.stage){p.legacy.stage=it.st.k;p.legacy.why=it.st.why}
+      for(const [k,v] of [['job',lp('job')],['area',lp('area')],['doctor',lp('doc')],['consult',lp('con')],['mgr',lp('mgr')],['src',lp('src')]])if(!p[k]&&v)p[k]=v;
+      logP(p,`更新 115 年諮詢紀錄 ${recs.length} 筆`);n++;continue}
+    const ts=new Date((last.date||t)+'T12:00:00').getTime();
+    p={id:'L'+it.chart.replace(/[^\w-]/g,''),name:last.name,chart:it.chart,job:lp('job'),area:lp('area'),doctor:lp('doc'),consult:lp('con'),mgr:lp('mgr'),src:lp('src'),
+      teeth:{},stack:[],teethDone:false,quotes:[],created:dot(recs[0].date||t),cts:ts,legacy};
+    if(P(p.id))p.id+='-'+Math.random().toString(36).slice(2,5);
+    const s=it.st;
+    if(s.k==='done')p.done={pay:s.r.date||t,note:'115 年諮詢表匯入（'+(s.r.cat||'成交')+'）',at:dot(t),by:who,imported:true};
+    else if(s.k==='closed'){const r=s.r;p.closed={reason:'115 年諮詢表：'+(r.note&&r.note!=='無'?r.note.slice(0,60):'未成交'),at:dot(r.date||t),by:who,imported:true}}
+    else if(s.k==='track'){const f=(s.r.follow||[]).at(-1)||'';p.trackDue=t;p.trackWhy='115 年諮詢表：'+s.why+(s.r.cat?'・'+s.r.cat:'')+(f?'｜'+f.slice(0,40):'')}
+    p.log=[{at:new Date().toLocaleString('zh-TW',{hour12:false}),by:who,t:`從 115 年諮詢表匯入 ${recs.length} 筆諮詢紀錄，判斷為「${LG_STAGE[s.k]}」（${s.why}）`}];
+    S.patients.push(p);n++}
+  return n;
+}
+function legacyCard(p){
+  const L=p.legacy;if(!L||!(L.recs||[]).length)return '';const m=v=>v?'NT$ '+money(v):'—';
+  return `<details class="card sec" ${p.quotes.length?'':'open'}><summary><h2>115 年諮詢紀錄</h2><span class="pill">${L.recs.length} 筆</span></summary>
+   <p class="muted" style="margin:0 0 8px">從「${h(L.from)}」匯入${L.stage?`・匯入時判斷為「${LG_STAGE[L.stage]}」（${h(L.why||'')}）`:''}</p>
+   ${L.recs.slice().reverse().map(r=>{const s=LG_ST[r.st]||[r.st||'—',''];return `<div class="lg-rec"><div class="row"><b class="grow">${h(md(r.date)||'日期不明')}・${h(r.cat||'未分類')}</b><span class="pill ${s[1]}">${h(s[0])}</span></div>
+    <div>${h(r.tx||'')}</div>
+    <div class="muted">${r.cls?h(LG_CLS[r.cls]||r.cls)+'・':''}報價 ${r.quoteT?h(r.quoteT):m(r.quote)}・成單 ${m(r.deal)}${r.dep?'・訂金 '+m(r.dep):''}</div>
+    <div class="muted">${r.doc?h(r.doc)+' 醫師・':''}諮詢 ${h(r.con||'—')}・個管 ${h(r.mgr||'—')}${r.src?'・'+h(r.src):''}</div>
+    ${r.note?`<div class="muted">備註：${h(r.note)}</div>`:''}${(r.follow||[]).map(f=>`<div class="muted">追蹤：${h(f)}</div>`).join('')}</div>`}).join('')}</details>`;
+}
+function legacySettingsCard(){
+  return `<div class="card"><h2>匯入 115 年諮詢表</h2><p class="muted" style="margin:0 0 8px">上傳「全院自費諮詢表」Excel，系統會依病歷號建立病人、帶入每一筆諮詢紀錄，並依規則分到療程中／追蹤中／已結案。匯入前會先顯示統計，確認後才寫入${syncOn()?'，並同步到診所雲端':''}。重複匯入只會更新諮詢紀錄，不會改動已經在系統裡處理過的狀態。</p>
+   <label class="btn" for="lg-f">選擇 Excel 檔</label><input id="lg-f" type="file" accept=".xlsx,.xls" hidden onchange="act.lgFile(this)"></div>`;
+}
+Object.assign(act,{
+  lgFile(inp){const f=inp.files[0];inp.value='';if(!f)return;if(!window.XLSX)return toast('讀取工具載入中，請稍後再試');toast('讀取中…');
+    f.arrayBuffer().then(buf=>{const wb=XLSX.read(buf,{cellDates:true});const d=lgRead(wb);if(!d||!d.recs.length)return toast('找不到「病歷號、姓名」欄位，請確認是全院自費諮詢表');
+      const plan=lgPlan(d,new Date());tmp.lg=plan;const c=plan.cnt;
+      modal(`<h2>匯入 115 年諮詢表</h2><p class="muted">工作表「${h(plan.sheet)}」：${plan.rows} 筆諮詢、${plan.items.length} 位病人${plan.skip.length?`；${plan.skip.length} 列沒有病歷號或姓名，略過（第 ${plan.skip.slice(0,5).join('、')}${plan.skip.length>5?'…':''} 列）`:''}</p>
+       <table class="items"><tbody>
+        <tr><td>療程中</td><td style="text-align:right"><b>${c.tx}</b> 位</td></tr>
+        <tr><td>追蹤中（會出現在個管待辦）</td><td style="text-align:right"><b>${c.track}</b> 位</td></tr>
+        <tr><td>已結案</td><td style="text-align:right"><b>${c.done}</b> 位</td></tr>
+        <tr><td>未成交結案</td><td style="text-align:right"><b>${c.closed}</b> 位</td></tr>
+        ${plan.upd?`<tr><td>之前匯入過（只更新諮詢紀錄）</td><td style="text-align:right"><b>${plan.upd}</b> 位</td></tr>`:''}
+        ${plan.mergeApp?`<tr><td>系統裡已有這位病人（加上諮詢紀錄，不改狀態）</td><td style="text-align:right"><b>${plan.mergeApp}</b> 位</td></tr>`:''}
+       </tbody></table>
+       <p class="muted" style="margin:8px 0 0">匯入前會先自動下載一份目前資料的備份。</p>
+       <div class="row" style="margin-top:12px"><button class="btn grow" onclick="tmp.lg=null;closeModal()">取消</button><button class="btn pri grow" onclick="act.lgRun()">確認匯入</button></div>`)}).catch(e=>toast('讀取失敗：'+e.message))},
+  async lgRun(){const plan=tmp.lg;if(!plan)return;closeModal();dlJSON(S,`匯入諮詢表前自動備份_${todayISO()}`);
+    const n=lgApply(plan,new Date());tmp.lg=null;localSave();render();
+    if(syncOn()){toast(`已匯入 ${n} 位病人，正在上傳到診所雲端（約 1～2 分鐘）…`);await syncNow({quiet:true});toast(syncSt.err?'上傳雲端失敗：'+syncSt.err+'，稍後會自動再試':`已匯入 ${n} 位病人並上傳雲端 ✓`)}
+    else toast(`已匯入 ${n} 位病人 ✓`);render()}
+});
 
 /* ========= 啟動 ========= */
 if(S.me&&me())V={name:'home'};

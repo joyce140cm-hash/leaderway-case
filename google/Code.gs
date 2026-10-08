@@ -65,20 +65,31 @@ function push_(changes, by) {
   lock.waitLock(25000);
   try {
     const sh = sheet_();
+    const props = PropertiesService.getScriptProperties();
     const v = sh.getDataRange().getValues();
     const idx = {}; for (let i = 1; i < v.length; i++) idx[v[i][0] + '|' + v[i][1]] = i + 1;
-    let ts = Date.now();
-    changes.forEach(function (c) {
+    // 時間戳記一定往前（不會因為上一批很大而倒退），其他裝置才不會漏拉
+    let ts = Math.max(Date.now(), +(props.getProperty('LAST_TS') || 0));
+    const toRow = function (c) {
       ts++;
       const j = c.deleted ? '' : String(c.json || '');
       const parts = []; for (let k = 0; k < j.length; k += CHUNK) parts.push('~' + j.slice(k, k + CHUNK));
-      let row = [c.col, String(c.id), ts, c.deleted ? 1 : '', by].concat(parts.length ? parts : ['']);
-      const width = Math.max(row.length, sh.getLastColumn());
-      while (row.length < width) row.push('');
-      const r = idx[c.col + '|' + c.id];
-      if (r) sh.getRange(r, 1, 1, width).setNumberFormat('@').setValues([row]);
-      else { sh.getRange(sh.getLastRow() + 1, 1, 1, width).setNumberFormat('@').setValues([row]); idx[c.col + '|' + c.id] = sh.getLastRow(); }
-    });
+      return [c.col, String(c.id), ts, c.deleted ? 1 : '', by].concat(parts.length ? parts : ['']);
+    };
+    const updates = [], adds = [];
+    changes.forEach(function (c) { const r = idx[c.col + '|' + c.id]; (r ? updates : adds).push({ c: c, r: r }); });
+    updates.forEach(function (u) { u.row = toRow(u.c); });
+    adds.forEach(function (u) { u.row = toRow(u.c); });
+    let width = sh.getLastColumn();
+    updates.concat(adds).forEach(function (u) { if (u.row.length > width) width = u.row.length; });
+    const pad = function (row) { while (row.length < width) row.push(''); return row; };
+    // 已存在的列：逐列更新；新的列：一次寫入（大量匯入快很多）
+    updates.forEach(function (u) { sh.getRange(u.r, 1, 1, width).setNumberFormat('@').setValues([pad(u.row)]); });
+    if (adds.length) {
+      const start = sh.getLastRow() + 1;
+      sh.getRange(start, 1, adds.length, width).setNumberFormat('@').setValues(adds.map(function (u) { return pad(u.row); }));
+    }
+    props.setProperty('LAST_TS', String(ts));
     return { ok: true, ts: ts };
   } finally { lock.releaseLock(); }
 }
