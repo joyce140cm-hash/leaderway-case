@@ -365,7 +365,7 @@ const DEFAULT_PRICES=[
  {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
  {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
 ];
-const APP_VER='10/08 17:00';
+const APP_VER='10/08 18:00';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -488,17 +488,22 @@ function rosterToday(off=0){
 function dutyOf(day){
   const out={};
   for(const sh of ['早','午','晚']){
-    const cells=(day.shifts&&day.shifts[sh])||{};const o={sup:[],docs:new Set(),con:[],flow:[],front:[],off:[]};
+    const cells=(day.shifts&&day.shifts[sh])||{};const o={sup:[],docs:new Set(),con:[],flow:[],front:[],cash:[],off:[],dayoff:[],duty:[]};
     for(const [nm,c] of Object.entries(cells)){
-      const code=c.code||'';const base=code.replace(/[0-9*+＋\s]/g,'');
+      const code=c.code||'';
       if(c.sup)o.sup.push(nm);
-      if(/特/.test(code))o.off.push(nm);
-      if(/個/.test(code))o.con.push(nm);
-      if(/^F/i.test(base))o.flow.push(nm);
-      if(/^C/i.test(base))o.front.push(nm);
-      for(const ch of base)if(DOCMAP[ch])o.docs.add(DOCMAP[ch]);
+      if(c.leave)o.off.push(nm);
+      if(c.dayoff)o.dayoff.push(nm);
+      if(c.duty&&sh==='晚')o.duty.push(nm);
+      for(const part of code.split(/[\/、,，\s]+/).filter(Boolean)){
+        const pt=part.replace(/[*+＋]/g,'');
+        if(/個/.test(pt))o.con.push(nm);
+        if(/^c2/i.test(pt))o.front.push(nm);else if(/^c(?!\d)/i.test(pt))o.cash.push(nm);
+        if(/^f/i.test(pt))o.flow.push(nm);
+        for(const ch of pt)if(DOCMAP[ch])o.docs.add(DOCMAP[ch]);
+      }
     }
-    if(!o.sup.length){const f=FRONT_PRI.find(n=>o.front.includes(n));if(f)o.sup.push(f+'（依順序）')}
+    for(const k of ['con','front','cash','flow'])o[k]=[...new Set(o[k])];
     out[sh]=o;
   }
   return out;
@@ -508,14 +513,17 @@ function dutyCard(){
   if(!S.roster)return `<div class="card"><h2>今日值班</h2><p class="muted" style="margin:0">還沒有上傳班表。到左側選單「上傳班表」上傳本月助理班表 Excel，就會顯示今天的值班。</p></div>`;
   if(!day)return `<div class="card"><h2>今日值班</h2><p class="muted" style="margin:0">目前上傳的是 ${h(S.roster.month)} 月班表，沒有今天的資料。請上傳本月班表。</p></div>`;
   const d=dutyOf(day);const j=a=>a.length?a.map(h).join('、'):'—';
-  const allDocs=new Set();Object.values(d).forEach(o=>o.docs.forEach(x=>allDocs.add(x)));
   const ao4=/AO4/i.test(day.note||'');
   const nurse=ao4?['早','午','晚'].filter(sh=>day.shifts[sh]&&day.shifts[sh]['陳芸']&&day.shifts[sh]['陳芸'].code&&!/特/.test(day.shifts[sh]['陳芸'].code)):[];
+  const offAll=[...new Set(Object.values(d).flatMap(o=>o.off))],dayoffAll=[...new Set(Object.values(d).flatMap(o=>o.dayoff))];
+  const duty=d['晚'].duty;
   return `<div class="card"><h2>今日值班 <span class="pill">${new Date().getMonth()+1}/${new Date().getDate()}</span></h2>
    ${day.note?`<p style="margin:0 0 8px"><span class="pill y">${h(day.note)}</span></p>`:''}
    ${ao4?`<p style="margin:0 0 8px"><b>AO4 日・護理師陳芸</b>：${nurse.length?'值班時段 '+nurse.join('、'):'班表上沒有排班，請確認'}</p>`:''}
-   <p style="margin:0 0 8px"><span class="muted">今日醫師</span><br>${allDocs.size?[...allDocs].map(h).join('、'):'—'}</p>
-   <div class="duty-shifts">${['早','午','晚'].map(sh=>`<div><b>${sh}診</b>主管：${j(d[sh].sup)}<br>個管（諮詢）：${j(d[sh].con)}<br>流動：${j(d[sh].flow)}<br>櫃檯：${j(d[sh].front)}${d[sh].off.length?`<br><span class="muted">特休：${j(d[sh].off)}</span>`:''}</div>`).join('')}</div></div>`;
+   <dl class="duty" style="margin:0 0 10px"><dt>醫師</dt><dd>${['早','午','晚'].map(sh=>`${sh}診：${d[sh].docs.size?[...d[sh].docs].map(h).join('、'):'—'}`).join('<br>')}</dd>
+    <dt>值日生</dt><dd>${duty.length?`<b>${j(duty)}</b>（晚診・倒垃圾、包垃圾）`:'—'}</dd>
+    ${offAll.length?`<dt>特休</dt><dd>${j(offAll)}</dd>`:''}${dayoffAll.length?`<dt>指定休假</dt><dd>${j(dayoffAll)}</dd>`:''}</dl>
+   <div class="duty-shifts">${['早','午','晚'].map(sh=>`<div><b>${sh}診</b>主管：${d[sh].sup.length?j(d[sh].sup):'<span style="color:var(--bad)">今日班表未安排</span>'}<br>櫃檯：${j(d[sh].front)}<br>結帳：${j(d[sh].cash)}<br>個管（諮詢）：${j(d[sh].con)}<br>流動：${j(d[sh].flow)}</div>`).join('')}</div></div>`;
 }
 function rosterTodos(){
   const out=[];const u=me();
@@ -545,12 +553,16 @@ function viewRoster(){
    <label class="btn pri block" style="margin-top:12px;text-align:center" for="e-file">選擇 Excel 檔並上傳</label><input id="e-file" type="file" accept=".xlsx,.xls" hidden onchange="act.editor(this)">
    ${S.editor?`<p class="muted" style="margin:12px 0 0">目前小編班表：${h(S.editor.month)} 月（${h(S.editor.sheet)}），${h(S.editor.uploaded)} 上傳，拍攝行程 ${Object.values(S.editor.days).reduce((n,d)=>n+d.items.filter(i=>i.shoot&&!i.cancel).length,0)} 筆。</p>`:''}</div>`;
 }
+function rgbOf(f){if(!f)return null;const x=String(f.rgb||'').toUpperCase().slice(-6);if(!/^[0-9A-F]{6}$/.test(x))return null;return [parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)]}
+const isPink=c=>!!c&&c[0]>=0xE0&&c[2]>=0x99&&c[1]<=0xCC&&c[0]-c[1]>=0x33;
+const isRed=c=>!!c&&c[0]>=0x90&&c[1]<=0x50&&c[2]<=0x50;
+const isOrange=c=>!!c&&c[0]>=0xF0&&c[1]>=0xA0&&c[1]<=0xD0&&c[2]<=0x40;
 function parseRoster(wb,m){
   const name=wb.SheetNames.find(n=>n.replace(/\s/g,'')===m+'月助理')||wb.SheetNames.find(n=>n.replace(/\s/g,'').startsWith(m+'月助理'));
   if(!name)return {err:'找不到「'+m+'月助理」工作表'};
   const ws=wb.Sheets[name];const rg=XLSX.utils.decode_range(ws['!ref']);
   const cell=(r,c)=>ws[XLSX.utils.encode_cell({r,c})];
-  const names=[];for(let c=3;c<=rg.e.c;c++){const v=cell(0,c);if(!v||v.v==null||String(v.v).trim()==='')break;names.push({c,n:String(v.v).trim()})}
+  const names=[];for(let c=3;c<=rg.e.c;c++){const v=cell(0,c);const t=v&&v.v!=null?String(v.v).trim():'';if(!t||/到這裡/.test(t))break;names.push({c,n:t})}
   const days={};let cur=null;
   for(let r=1;r<=rg.e.r;r++){
     const a=cell(r,0),sh=cell(r,2);
@@ -558,9 +570,10 @@ function parseRoster(wb,m){
     const shv=sh&&sh.v!=null?String(sh.v).trim():'';
     if(!cur||!['早','午','晚'].includes(shv))continue;
     const row={};
-    for(const {c,n} of names){const x=cell(r,c);const code=x&&x.v!=null?String(x.v).trim():'';const f=x&&x.s&&x.s.fgColor;
+    for(const {c,n} of names){const x=cell(r,c);const code=x&&x.v!=null?String(x.v).trim():'';const f=x&&x.s&&x.s.fgColor;const rgb=rgbOf(f);
       const sup=!!(f&&((f.theme===6&&f.tint>0.3)||String(f.rgb||'').toUpperCase().endsWith('D7E4BD')));
-      if(code||sup)row[n]={code,sup}}
+      const duty=isPink(rgb);const dayoff=!code&&isRed(rgb);const leave=/特/.test(code)||(!code&&isOrange(rgb));
+      if(code||sup||duty||dayoff||leave)row[n]={code,sup,duty,dayoff,leave}}
     days[cur].shifts[shv]=row;
   }
   return {sheet:name,names:names.map(x=>x.n),days};
