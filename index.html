@@ -354,8 +354,8 @@ const DEFAULT_PRICES=[ // 只有項目名稱（金額只存在診所雲端）
  {"id":"fren","name":"繫帶切除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["繫帶","frenectomy"]},
  {"id":"cyst","name":"囊腫摘除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["囊腫","cyst"]}
 ];
-const APP_VER='10/08 21:10';
-const BUILD=202610082110; // 年月日時分，用來判斷「比較新」的版本
+const APP_VER='10/08 21:20';
+const BUILD=202610082120; // 年月日時分，用來判斷「比較新」的版本
 const SYNC_VER=3; // 雲端用來擋掉舊版程式上傳
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
@@ -488,7 +488,7 @@ function codeHash(salt,v){let h=salt+'|'+String(v||'').trim();for(let i=0;i<500;
 function pwOk(kind,v){const c=(S.secrets||{})[kind];return !!(c&&c.h&&codeHash(c.salt,v)===c.h)}
 const pwSet=kind=>!!((S.secrets||{})[kind]||{}).h;
 function stampUser(u){u.setAt=Date.now();u.setBy=me()?me().name:''}
-const AUTH_F=['role','link','priceEdit','disabled','setAt','setBy']; // 由管理員設定的欄位：以最新一次設定為準
+const AUTH_F=['role','link','priceEdit','rosterEdit','disabled','setAt','setBy']; // 由管理員設定的欄位：以最新一次設定為準
 function mergeUser(b,l,r){const m=merge3(b,l,r)||{};const src=(l.setAt||0)>(r.setAt||0)?l:r;for(const f of AUTH_F){if(src[f]===undefined)delete m[f];else m[f]=src[f]}return m}
 function mergeUsers(b,l,r){ // 帳號只合併、不會因為同步而減少
   const B=new Map((Array.isArray(b)?b:[]).map(x=>[x.acc,x])),L=new Map(l.map(x=>[x.acc,x]));const out=[],seen=new Set();
@@ -636,7 +636,7 @@ function render(){
   <aside class="side"><div class="brand"><div class="mark">立</div><b>立威個案管理</b></div>
    ${item('home','今日待辦')}${item('patients','患者查詢')}${!clinic&&(['醫師','諮詢師','個管主管'].includes(r)||(r==='院長'&&isDocUser()))?item('mycase','我的 case','',nAct):''}
    ${boss?`<div class="sec">管理</div>${item('cons','諮詢管理')}${item('mgrs','個案管理')}${item('docs','醫師 case')}${item('reports','報表')}`:''}
-   ${clinic?'':`<div class="sec">其他</div>${item('mkt','行銷 case')}${item('handoff','待交接','第二階段')}${item('roster','上傳班表')}`}
+   ${clinic?'':`<div class="sec">其他</div>${item('mkt','行銷 case')}${item('handoff','待交接','第二階段')}${canRoster()?item('roster','上傳班表'):''}`}
    <div class="sec">設定</div>${item('prices','價目表')}${item('settings','設定')}<p class="muted" style="padding:14px 12px 0;margin:0;font-size:11px">版本：${APP_VER}</p></aside>
   <div class="scrim" onclick="document.body.classList.remove('menu')"></div>
   ${syncOn()?'':'<div class="demo">尚未連上診所雲端・資料只存在這支手機・請勿輸入真實病人資料</div>'}
@@ -739,7 +739,9 @@ function viewReports(){
   return `<h1>報表</h1><div class="card"><h2>目前試用資料</h2><dl class="duty"><dt>病人數</dt><dd>${n}</dd><dt>已出報價</dt><dd>${q}</dd><dt>已簽名</dt><dd>${sg}</dd></dl></div>
   <div class="card"><p style="margin:0">第二階段功能：諮詢會、行銷會、主管會、院會的報表（成交率、未成交原因、患者來源、NP 數等）會在這裡自動產生。</p></div>${['管理員','院長'].includes(me().role)?evalReport():''}`;
 }
+const canRoster=()=>{const u=me();return !!u&&(u.role==='管理員'||!!u.rosterEdit)};
 function viewRoster(){
+  if(!canRoster())return '<h1>上傳班表</h1><div class="card"><p style="margin:0">只有管理員和排班主管可以上傳班表。</p></div>';
   const m=new Date().getMonth()+1;const R=S.roster;
   return `<h1>上傳班表</h1>
   <div class="card"><h2>助理班表</h2>
@@ -2121,7 +2123,9 @@ function codesCard(){const c=S.secrets||{};const st=k=>pwSet(k)?'<span class="pi
 function viewSettings(){
   const u=me();const admin=u.role==='管理員';
   return `<h1>設定</h1>${syncCard()}
-  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span></div>${admin?`${x.acc!==u.acc&&x.role!=='管理員'?`<select onchange="act.role(${js(x.acc)},this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link(${js(x.acc)},this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
+  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span>${x.rosterEdit||x.priceEdit?`<span style="display:block;margin-top:3px">${x.rosterEdit?'<span class="pill y" style="font-size:11px">排班主管</span> ':''}${x.priceEdit?'<span class="pill" style="font-size:11px">價目表編輯</span>':''}</span>`:''}</div>${admin?`${x.acc!==u.acc&&x.role!=='管理員'?`<select onchange="act.role(${js(x.acc)},this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link(${js(x.acc)},this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
+
+   ${admin?`<label class="f">排班主管（可以上傳班表）</label><div class="row">${S.users.filter(x=>x.role!=='管理員').map(x=>`<label style="font-size:14px"><input type="checkbox" ${x.rosterEdit?'checked':''} onchange="act.rosterPerm(${js(x.acc)},this.checked)"> ${h(x.name)}</label>`).join('')||'<span class="muted">還沒有其他帳號</span>'}</div><p class="muted" style="margin:4px 0 0">管理員本來就可以上傳；其他同事只會在首頁看到「今日值班」。</p>`:''}
 </div>
   ${admin?codesCard():''}
   <div class="card"><div class="row"><div class="grow"><h2 style="margin:0">價目表</h2><span class="muted">${h(S.priceDate||'')} 起使用・${S.prices.length} 項${S.priceDraft?'・有一份'+PST[S.priceDraft.status][0]:''}</span></div><button class="btn pri sm" onclick="go('prices')">打開價目表</button></div>
@@ -2332,6 +2336,7 @@ const act={
     S.prices=D.prices.filter(x=>!x.removed).map(x=>{delete x.removed;return x});S.itemImgs=D.imgs||{};S.priceDate=today();S.priceBy=me().name;S.priceApprover=D.approvedBy;S.priceDraft=null;_cand=null;save();closeModal();toast('價目表已更新上線');go('prices')},
   prFile(inp){const f=inp.files[0];if(!f)return;if(f.size>15e6)return toast('檔案太大（上限 15MB）');const fr=new FileReader();fr.onload=()=>{S.priceFile={name:f.name,src:fr.result,at:today(),by:me().name};save();toast(syncOn()?'已上傳，正在存到診所雲端…':'已上傳到這支手機');render()};fr.readAsDataURL(f)},
   async prFileOpen(w){const F=w==='cur'?S.priceFile:(S.priceVersions[w]||{}).file;if(!F)return;const win=window.open('','_blank');try{const d=await imgData(F.src);const b=await (await fetch(d)).blob();const u=URL.createObjectURL(b);if(win)win.location=u;else location.href=u}catch(e){if(win)win.close();toast('打不開檔案：'+e.message)}},
+  rosterPerm(acc,on){const u=S.users.find(x=>x.acc===acc);u.rosterEdit=on;stampUser(u);save();toast((on?'已設定 ':'已取消 ')+u.name+' 為排班主管');render()},
   prPerm(acc,on){const u=S.users.find(x=>x.acc===acc);u.priceEdit=on;stampUser(u);save();toast((on?'已開放 ':'已關閉 ')+u.name+' 編輯價目表')},
   msgRead(k){const p=P(V.pid);p.msgs[k].read=true;p.msgs[k].readBy=me().name;logP(p,'已讀醫師交代');save();render()},
   lineCls(key,v){const q=tmp.q2;q.ovr=q.ovr||{};q.ovr[key]=v;tmp.q2=buildQ2(q.orders,q.ovr,q,P(V.pid));render()},
