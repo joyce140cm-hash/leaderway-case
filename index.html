@@ -69,6 +69,8 @@ textarea.i{min-height:150px}
 .pill.g{background:#E5F3EA;color:var(--good)} .pill.y{background:#FBF1CC;color:#8A6200} .pill.r{background:#FBE1DA;color:var(--bad)}
 .muted{color:var(--muted);font-size:13px}
 .list .it{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.list .it>.grow{min-width:9em}.list .it>.pill{white-space:normal;max-width:58%;text-align:left;line-height:1.45;padding:3px 10px;border-radius:10px;flex:0 1 auto}
+@media (max-width:600px){.list .it{flex-wrap:wrap;row-gap:6px}.list .it>.grow{flex-basis:100%}.list .it>.pill{max-width:100%}}
 .list .it:last-child{border-bottom:0}
 .list .it .grow b{display:block}
 .duty{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
@@ -354,8 +356,8 @@ const DEFAULT_PRICES=[ // 只有項目名稱（金額只存在診所雲端）
  {"id":"fren","name":"繫帶切除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["繫帶","frenectomy"]},
  {"id":"cyst","name":"囊腫摘除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["囊腫","cyst"]}
 ];
-const APP_VER='10/08 21:20';
-const BUILD=202610082120; // 年月日時分，用來判斷「比較新」的版本
+const APP_VER='10/08 21:30';
+const BUILD=202610082130; // 年月日時分，用來判斷「比較新」的版本
 const SYNC_VER=3; // 雲端用來擋掉舊版程式上傳
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
@@ -1092,7 +1094,7 @@ function viewHome(){
   ${usage().pct>=80&&me().role==='管理員'?`<div class="card" style="background:#FBE1DA;border-color:var(--bad)"><b style="color:var(--bad)">手機空間已用 ${usage().pct}%</b><p class="muted" style="margin:4px 0 0">請到「設定」匯出備份，並移除已完成病人的照片。</p></div>`:''}${eveningBanner()}${meetingCard()}${surgeryCard()}${shootCard()}${mktHomeCard()}${dutyCard()}
   ${rt.length?`<div class="card list">${rt.map((x,i)=>`<div class="it" ${x.to?`onclick="tmp.rt[${i}].to()"`:''}><div class="grow"><b>${h(x.t)}</b></div><span class="pill ${x.c}">提醒</span></div>`).join('')}</div>`:''}
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">${isBoss()?'全部個案提醒':'我的個案提醒'}</h2><button class="btn pri sm" onclick="go('newp')">＋新增病人</button></div>
-   <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${x.p.urgent?'<span class="pill r">優先</span> ':''}${h(x.p.name)}</b><span class="muted">${h(x.p.chart||'病歷號待補')}・${x.p.doctor?h(x.p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${x.c}">${h(x.t)}</span></div>`).join(''):`<p class="muted">${u.role==='臨床'?'目前沒有待標牙位的病人。':'目前沒有待辦。'}</p>`}</div></div>`;
+   <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${x.p.urgent?'<span class="pill r">優先</span> ':''}${h(x.p.name)}</b><span class="muted">${h(x.p.chart||'病歷號待補')}・${x.p.doctor?h(x.p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${x.c}" title="${h(x.t)}">${h(x.t.length>60?x.t.slice(0,58)+'…':x.t)}</span></div>`).join(''):`<p class="muted">${u.role==='臨床'?'目前沒有待標牙位的病人。':'目前沒有待辦。'}</p>`}</div></div>`;
 }
 /* ---- 下一步 ---- */
 const scrollTo_=id=>`(document.getElementById('${id}')||{scrollIntoView(){}}).scrollIntoView({behavior:'smooth',block:'start'})`;
