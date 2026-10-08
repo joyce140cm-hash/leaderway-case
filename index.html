@@ -366,7 +366,7 @@ const DEFAULT_PRICES=[
  {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
  {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
 ];
-const APP_VER='10/08 19:00';
+const APP_VER='10/08 19:30';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -491,10 +491,18 @@ function queueSync(){if(!syncOn())return;clearTimeout(syncSt.timer);syncSt.timer
 function paintSync(){const el=document.getElementById('syncdot');if(!el)return;el.className='syncdot '+(syncSt.err?'bad':syncSt.busy?'busy':'ok');el.title=syncSt.err?'同步失敗：'+syncSt.err:syncSt.busy?'同步中…':'已同步 '+(syncSt.at?new Date(syncSt.at).toTimeString().slice(0,5):'')}
 setInterval(()=>{if(syncOn()&&document.visibilityState==='visible')syncNow()},45000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&syncOn())syncNow()});
-(function fromLink(){const m=location.hash.match(/#sync=([^&]+)/);if(!m)return;try{const [u,t]=decodeURIComponent(escape(atob(m[1]))).split('|');if(u&&t){SY={url:u,token:t,since:0};SHADOW={};saveSY();saveShadow();history.replaceState(null,'',location.pathname+location.search);setTimeout(()=>{toast('已連上診所雲端，正在下載資料…');syncNow({full:true})},300)}}catch(e){}})();
-function syncLink(){return location.origin+location.pathname+'#sync='+btoa(unescape(encodeURIComponent(SY.url+'|'+SY.token)))}
+function readLink(str){try{const [u,t]=decodeURIComponent(escape(atob(str))).split('|');return u&&t?{url:u,token:t}:null}catch(e){return null}}
+function applyLink(cfg,silent){
+  if(!cfg)return false;if(SY.url===cfg.url&&SY.token===cfg.token)return true;
+  try{if(S.patients.length||S.users.length)localStorage.setItem('lw-pre-cloud',JSON.stringify(S))}catch(e){}
+  S=blank();localSave();SY={url:cfg.url,token:cfg.token,since:0};SHADOW={};saveSY();saveShadow();
+  if(!silent)setTimeout(()=>{toast('已連上診所雲端，正在下載資料…');syncNow({full:true}).then(()=>render())},200);return true;
+}
+(function fromLink(){const q=new URLSearchParams(location.search).get('c');const m=location.hash.match(/#sync=([^&]+)/);applyLink(readLink(q||(m&&m[1])||''))})();
+function syncLink(){return location.origin+location.pathname+'?c='+encodeURIComponent(btoa(unescape(encodeURIComponent(SY.url+'|'+SY.token))))}
 function syncCard(){
   const on=syncOn();
+  if(me().role!=='管理員')return `<div class="card"><h2>雲端 ${on?'<span id="syncdot" class="syncdot ok"></span>':''}</h2><p style="margin:0">${on?'已連上診所雲端'+(syncSt.at?'・最近同步 '+new Date(syncSt.at).toLocaleTimeString('zh-TW',{hour12:false}):''):'尚未連上診所雲端，請向管理員索取連線網址。'}</p>${on?'<button class="btn sm" style="margin-top:8px" onclick="syncNow().then(()=>render())">立即同步</button>':''}</div>`;
   return `<div class="card"><h2>Google 雲端同步 ${on?`<span id="syncdot" class="syncdot ok"></span>`:''}</h2>
    ${on?`<p style="margin:0 0 6px">已連上診所雲端。${syncSt.err?`<span style="color:var(--bad)">最近一次同步失敗：${h(syncSt.err)}</span>`:syncSt.at?'最近同步 '+new Date(syncSt.at).toLocaleTimeString('zh-TW',{hour12:false}):''}</p>
      <div class="row"><button class="btn pri sm" onclick="syncNow().then(()=>render())">立即同步</button>${me().role==='管理員'?`<button class="btn sm" onclick="act.syncShare()">給同事的連線網址</button>`:''}<button class="btn sm" onclick="act.syncOff()">中斷連線</button></div>
@@ -551,6 +559,7 @@ function viewLogin(){
     <label class="f" for="nm">姓名</label><input class="i" id="nm" placeholder="例如 王嘉慈">`:''}
     <button class="btn pri block" style="margin-top:16px" onclick="act.login()">${reg?'建立帳號並登入':'登入'}</button>
    </div>
+   ${syncOn()?'':`<details class="card" ${tmp.showPaste?'open':''}><summary><b>🔗 貼上診所的連線網址</b></summary><p class="muted" style="margin:8px 0 6px">把管理員傳給你的網址整段貼在這裡。</p><input class="i" id="lk-u" placeholder="https://…?c=…"><button class="btn pri block" style="margin-top:8px" onclick="act.syncPaste()">連線</button></details>`}
    <p class="muted">${syncOn()?'✓ 已連上診所雲端，帳號與資料由大家共用。':'第一位建立的帳號會是管理員。尚未連上雲端時，帳號與資料只存在這支手機。'}</p>
    <details class="card"><summary><b>📱 iPhone 請先「加入主畫面」</b></summary><p class="muted" style="margin:8px 0 0">用 Safari 打開這個網址 → 按下方「分享」按鈕 → 選「加入主畫面」。之後從桌面圖示打開，資料比較不會被手機自動清掉。</p></details>
   </div>`;
@@ -2119,13 +2128,14 @@ const act={
   doRestore(id){if(document.getElementById('rs-pw').value!==DEL_PW)return toast('密碼不正確');const t=S.trash.find(x=>x.id===id);if(!t)return;
     if(t.kind==='patient')S.patients.unshift(t.data);else if(t.kind==='nv'){const p=P(t.pid);if(!p)return toast('病人已不存在');p.nv=p.nv||[];p.nv.push(t.data);fixTrack(p)}else if(t.kind==='mktVisit'){const c=(S.mkt||[]).find(x=>x.id===t.mid);if(!c)return toast('行銷 case 已不存在');c.visits.push(t.data)}
     S.trash=S.trash.filter(x=>x!==t);S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:me().name,label:'復原：'+t.label,backup:true});save();closeModal();toast('已復原');render()},
+  syncPaste(){const v=(document.getElementById('lk-u').value||'').trim();let m=v.match(/[?&]c=([^&#\s]+)/);let cfg=m?readLink(decodeURIComponent(m[1])):null;if(!cfg){m=v.match(/#sync=([^&\s]+)/);cfg=m?readLink(m[1]):null}if(!cfg)return toast('這不是診所的連線網址，請重新複製');applyLink(cfg);render()},
   async syncTest(){const u=document.getElementById('sy-u').value.trim(),t=document.getElementById('sy-t').value.trim();if(!u||!t)return toast('請填網址和金鑰');const old=SY;SY={url:u,token:t};try{await api({action:'ping'});toast('連線成功 ✓')}catch(e){toast('連線失敗：'+e.message)}SY=old},
   async syncConnect(){const u=document.getElementById('sy-u').value.trim(),t=document.getElementById('sy-t').value.trim();if(!u||!t)return toast('請填網址和金鑰');
     SY={url:u,token:t,since:0};let r;try{r=await api({action:'pull',since:0})}catch(e){SY={};return toast('連線失敗：'+e.message)}
     if(r.rows.length){modal(`<h2>雲端已經有資料</h2><p>雲端已有 ${r.rows.filter(x=>x.col==='p'&&!x.deleted).length} 位病人。要用雲端的資料取代這支手機的資料嗎？這支手機目前的資料會先自動下載一份備份。</p><div class="row"><button class="btn grow" onclick="SY={};closeModal()">取消</button><button class="btn pri grow" onclick="act.syncAdopt()">使用雲端資料</button></div>`)}
     else{SHADOW={};saveSY();saveShadow();toast('連線成功，正在把這支手機的資料上傳到雲端…');await syncNow();toast(syncSt.err?'上傳失敗：'+syncSt.err:'已上傳到雲端 ✓');render()}},
   async syncAdopt(){closeModal();dlJSON(S,`連雲端前自動備份_${todayISO()}`);const meAcc=S.me;S=blank();S.me=meAcc;SHADOW={};SY.since=0;saveSY();saveShadow();await syncNow({full:true});if(!S.users.some(u=>u.acc===S.me))S.me=null;localSave();toast(syncSt.err?'下載失敗：'+syncSt.err:'已下載雲端資料 ✓');render()},
-  syncShare(){const l=syncLink();modal(`<h2>給同事的連線網址</h2><p class="muted">同事用手機或平板打開這個網址，就會自動連上診所雲端，再用自己的帳號登入。<b>這個網址包含金鑰，只傳給診所同事。</b></p><textarea class="i" id="sl-t" style="min-height:90px">${h(l)}</textarea><div class="row" style="margin-top:10px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="const t=document.getElementById('sl-t');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})">複製</button></div>`)},
+  syncShare(){const l=syncLink();modal(`<h2>給同事的連線網址</h2><p class="muted">同事用任何方式打開這個網址（LINE、Safari、Chrome、主畫面都可以）就會自動連上，再用自己的帳號登入；也可以在登入頁貼上這個網址。iPhone 建議用 Safari 打開後「加入主畫面」。<b>這個網址包含金鑰，只傳給診所同事。</b></p><textarea class="i" id="sl-t" style="min-height:90px">${h(l)}</textarea><div class="row" style="margin-top:10px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="const t=document.getElementById('sl-t');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})">複製</button></div>`)},
   syncOff(){modal(`<h2>中斷雲端連線？</h2><p class="muted">這支手機會停止同步，雲端資料不受影響。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="SY={};SHADOW={};saveSY();saveShadow();closeModal();render()">中斷</button></div>`)},
   newQuote(pid){tmp.q2=null;tmp.editV=null;tmp.promo=false;go('orders',{pid})},
   parse(){
