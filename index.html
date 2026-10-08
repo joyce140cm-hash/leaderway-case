@@ -354,8 +354,8 @@ const DEFAULT_PRICES=[ // 只有項目名稱（金額只存在診所雲端）
  {"id":"fren","name":"繫帶切除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["繫帶","frenectomy"]},
  {"id":"cyst","name":"囊腫摘除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["囊腫","cyst"]}
 ];
-const APP_VER='10/08 20:30';
-const BUILD=202610082030; // 年月日時分，用來判斷「比較新」的版本
+const APP_VER='10/08 21:00';
+const BUILD=202610082100; // 年月日時分，用來判斷「比較新」的版本
 const SYNC_VER=3; // 雲端用來擋掉舊版程式上傳
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
@@ -427,7 +427,7 @@ const sig=j=>'h'+hash(j)+'.'+j.length;
 const isSig=v=>typeof v==='string'&&/^h-?\d+\.\d+$/.test(v);
 const BASE=new Map();
 const IDB=(()=>{let dbp=null;
-  function db(){if(!dbp)dbp=new Promise((res,rej)=>{try{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('lw-case',1);r.onupgradeneeded=()=>r.result.createObjectStore('base');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}});return dbp}
+  function db(){if(!dbp)dbp=new Promise((res,rej)=>{setTimeout(()=>rej(new Error('idb timeout')),2000);try{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('lw-case',1);r.onupgradeneeded=()=>r.result.createObjectStore('base');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}});return dbp}
   function run(mode,fn){return db().then(d=>new Promise((res,rej)=>{const t=d.transaction('base',mode);fn(t.objectStore('base'));t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})).catch(()=>{})}
   return {
     all(){return db().then(d=>new Promise((res,rej)=>{const m=new Map();const c=d.transaction('base','readonly').objectStore('base').openCursor();c.onsuccess=()=>{const x=c.result;if(x){m.set(x.key,x.value);x.continue()}else res(m)};c.onerror=()=>rej(c.error)}))},
@@ -442,7 +442,7 @@ function delBase(key){BASE.delete(key);delete SHADOW[key];basePend.put.delete(ke
 function resetShadow(){SHADOW={};BASE.clear();basePend.put.clear();basePend.del.clear();IDB.clear();saveShadow()}
 // 舊版 SHADOW 存的是完整內容 → 搬到 IndexedDB，localStorage 只留指紋（省一半空間）
 (function migrateShadow(){let n=0;for(const [k,v] of Object.entries(SHADOW))if(typeof v==='string'&&!isSig(v)){BASE.set(k,v);basePend.put.set(k,v);SHADOW[k]=sig(v);n++}if(n){saveShadow();flushBase()}})();
-const baseReady=IDB.all().then(m=>{for(const [k,v] of m)if(!BASE.has(k)&&typeof v==='string'&&SHADOW[k]===sig(v))BASE.set(k,v)}).catch(()=>{});
+const baseReady=Promise.race([IDB.all(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('idb timeout')),2000))]).then(m=>{for(const [k,v] of m)if(!BASE.has(k)&&typeof v==='string'&&SHADOW[k]===sig(v))BASE.set(k,v)}).catch(()=>{});
 const syncSt={busy:false,err:'',at:0,timer:null,again:false};
 const IMGC={};const IMG_WAIT=new Set();let imgTimer=null;
 const BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
@@ -453,7 +453,7 @@ function I(s){if(!s)return '';if(!String(s).startsWith('img:'))return s;const id
 async function loadImgs(){const ids=[...IMG_WAIT].filter(id=>!IMGC[id]);IMG_WAIT.clear();for(let k=0;k<ids.length;k+=8){const part=ids.slice(k,k+8);try{const r=await api({action:'getimg',ids:part});for(const [id,d] of Object.entries(r.imgs||{}))if(d){IMGC[id]=d;document.querySelectorAll(`img[src="${BLANK}#img:${id}"]`).forEach(el=>el.src=d)}}catch(e){}}}
 async function imgData(s){if(!s||!String(s).startsWith('img:'))return s;const id=s.slice(4);if(!IMGC[id]){const r=await api({action:'getimg',ids:[id]});if(r.imgs&&r.imgs[id])IMGC[id]=r.imgs[id]}return IMGC[id]||''}
 async function api(body){
-  let r;try{r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:SY.token,ver:SYNC_VER},body))})}catch(e){throw new Error(navigator.onLine===false?'這台目前沒有網路':'連不上診所雲端，請確認網路')}
+  let r;const ac=window.AbortController?new AbortController():null;const tm=setTimeout(()=>ac&&ac.abort(),90000);try{r=await fetch(SY.url,{signal:ac?ac.signal:undefined,method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:SY.token,ver:SYNC_VER},body))})}catch(e){clearTimeout(tm);throw new Error(navigator.onLine===false?'這台目前沒有網路':e&&e.name==='AbortError'?'雲端回應太慢（超過 90 秒），請再試一次':'連不上診所雲端，請確認網路')}clearTimeout(tm);
   const j=await r.json();if(!j.ok){if(j.old)checkVersion(true);throw new Error(j.err||'雲端錯誤')}return j;
 }
 function recs(){const out=S.patients.map(p=>({col:'p',id:p.id,obj:p,name:p.name}));for(const k of KV_KEYS)if(S[k]!==undefined)out.push({col:'kv',id:k,obj:S[k],name:k});return out}
@@ -527,11 +527,11 @@ async function syncNow(opts={}){
   if(!syncOn())return;
   if(SY.forcePending)opts=Object.assign({},opts,{force:true,full:true});
   if(syncSt.busy){const a=typeof syncSt.again==='object'?syncSt.again:{};if(opts.force)a.force=true;if(opts.full)a.full=true;syncSt.again=a;return}
-  syncSt.busy=true;syncSt.err='';paintSync();
+  syncSt.busy=true;syncSt.err='';syncSt.t0=Date.now();syncSt.step='下載診所資料';paintSync();loginPaint();
   try{
-    await baseReady;
+    try{await baseReady}catch(e){}
     // 1. 拉雲端（since 只依「拉下來的」時間前進，避免漏掉別台同時上傳的資料）
-    const r=await api({action:'pull',since:opts.full?0:(SY.since||0)});let changed=false;
+    const r=await api({action:'pull',since:opts.full?0:(SY.since||0)});let changed=false;syncSt.step='整理資料（'+r.rows.length+' 筆）';loginPaint();await new Promise(r0=>setTimeout(r0,0));
     for(const row of r.rows.sort((a,b)=>a.ts-b.ts))if(applyRemote(row,opts))changed=true;
     SY.since=Math.max(opts.full?0:(SY.since||0),r.ts||0);if(r.backup)SY.backup=r.backup;saveSY();
     const before=SY.since;
@@ -555,7 +555,7 @@ async function syncNow(opts={}){
     syncSt.prog='';syncSt.at=Date.now();SY.ok=Date.now();if(opts.force){SY.forcePending=0;syncSt.forceDone={at:Date.now(),n:ch.length}}saveSY();saveShadow();localSave();flushBase();
     if(changed&&!opts.quiet)softRender();
   }catch(e){syncSt.err=e.message||String(e);syncSt.prog='';saveShadow()}
-  syncSt.busy=false;const pi=pendingInfo();if(!pi.n)syncSt.dirtyAt=0;else if(!syncSt.dirtyAt)syncSt.dirtyAt=Date.now();paintSync();
+  syncSt.busy=false;syncSt.step='';loginPaint();const pi=pendingInfo();if(!pi.n)syncSt.dirtyAt=0;else if(!syncSt.dirtyAt)syncSt.dirtyAt=Date.now();paintSync();
   if(syncSt.again){const a=typeof syncSt.again==='object'?syncSt.again:{};syncSt.again=false;setTimeout(()=>syncNow(Object.assign({quiet:true},a)),300)}
   else if(syncSt.err&&pi.n&&!syncSt.retry){syncSt.retry=setTimeout(()=>{syncSt.retry=null;syncNow({quiet:true})},20000)}
 }
@@ -649,11 +649,19 @@ function after(){
 }
 
 /* ---- 登入 ---- */
+function loginPaint(){const el=document.getElementById('lg-st');if(!el)return;
+  if(!syncSt.busy&&syncSt.at&&tmp.wantLogin){tmp.wantLogin=false;el.innerHTML='';setTimeout(()=>{if(!S.me)act.login()},50);return}
+  if(!syncOn()||SY.ok&&!syncSt.busy){el.innerHTML='';return}
+  if(syncSt.busy){const sec=Math.round((Date.now()-(syncSt.t0||Date.now()))/1000);el.innerHTML=`<div class="card" style="background:#FFF4CC;border-color:#E8B400;margin:0 0 12px"><b>⏳ 正在${h(syncSt.step||'下載診所資料')}…（${sec} 秒）</b><p class="muted" style="margin:4px 0 0">第一次在這台裝置使用，要下載全部資料，大約 10～60 秒。完成後${tmp.wantLogin?'會自動幫你登入':'就可以登入'}，請不要關掉。</p></div>`;return}
+  if(syncSt.err){el.innerHTML=`<div class="card" style="background:#FBE1DA;border-color:var(--bad);margin:0 0 12px"><b style="color:var(--bad)">⚠ ${h(syncSt.err)}</b><div class="row" style="margin-top:8px"><button class="btn pri sm" onclick="syncNow({full:!SY.since})">重試</button></div></div>`;return}
+  if(syncSt.at&&tmp.wantLogin){tmp.wantLogin=false;el.innerHTML='';setTimeout(()=>{if(!S.me)act.login()},50)}
+}
+setInterval(()=>{if(!S.me&&syncSt.busy)loginPaint()},1000);
 function viewLogin(){
-  const reg=tmp.reg;
+  const reg=tmp.reg;setTimeout(loginPaint,0);
   return `<div class="login">
    <div class="logo"><div class="mark">立</div><div><b style="font-family:var(--display);font-size:20px;letter-spacing:.08em">立威個案管理</b><div class="muted">試用版</div></div></div>
-   <div class="card">
+   <div id="lg-st"></div><div class="card">
     <label class="f" for="acc">帳號（員工編號）</label><input class="i" id="acc" autocomplete="username" value="${h(tmp.acc||'')}" placeholder="例如 A48">
     <label class="f" for="pw">密碼</label><input class="i" id="pw" type="password" autocomplete="current-password" value="${h(tmp.pw||'')}">
     ${reg?`<p class="muted" style="margin:12px 0 0">這是新帳號，請輸入診所註冊碼與姓名建立帳號。</p>
@@ -2151,7 +2159,7 @@ const act={
     const acc=document.getElementById('acc').value.trim(),pw=document.getElementById('pw').value;
     tmp.acc=acc;tmp.pw=pw;
     if(!acc||!pw)return toast('請輸入帳號和密碼');
-    if(syncOn()&&!syncSt.at&&!SY.ok&&!(syncSt.err&&S.users.length)){syncNow({full:!SY.since});return toast(syncSt.err?'連不上診所雲端：'+syncSt.err+'，請確認網路後再按一次':'正在下載診所雲端資料，請等幾秒再按登入')}
+    if(syncOn()&&!syncSt.at&&!SY.ok&&!(syncSt.err&&S.users.length)){tmp.wantLogin=true;if(!syncSt.busy)syncNow({full:!SY.since});loginPaint();return}
     const u=S.users.find(x=>x.acc.toLowerCase()===acc.toLowerCase());
     if(u){if(u.pw!==hash(pw))return toast('密碼不正確');S.me=u.acc;tmp={};save();go('home');return}
     if(!tmp.reg){tmp.reg=true;render();return}
