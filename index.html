@@ -240,8 +240,15 @@ canvas.pad{width:100%;height:200px;border:1px dashed var(--muted);border-radius:
 'use strict';
 /* ========= 基本資料 ========= */
 const KEY='lw-case-demo-v1';
-const DOCTORS=['林涵威','周厚江','唐宗凡','簡志忠','邵獻慶','謝欣婷','黃振邦','蔡世軒','蕭至勛','尹姵今','陳德星','華芳瑩','黃宣諭','林正忠','吳哲勛','趙子毅','林涵宇','許彤年'];
+const DOCTORS=['林涵威','周厚江','唐宗凡','簡志忠','邵獻慶','謝欣婷','黃振邦','蔡世軒','蕭至勛','尹姵今','陳德星','華芳瑩','黃宣諭','林正忠','吳哲勛','趙子毅','許彤年'];
 const CONSULT=['儒瑩','妏玲','暐涵','苡薇','陳芸','鎧甄'];
+const CLINIC=['Alba','佳筠','宥希','依均','雅筑','宥文','宛渝','于綺'];
+const OTHERS=['嘉慈'];
+const STAFF_TITLE={儒瑩:'正職・櫃檯主管（第1順位）、諮詢師／個管',苡薇:'正職・個管主管、櫃檯主管（第2順位）',暐涵:'正職・櫃檯主管（第3順位）、諮詢師／個管',Alba:'正職・資深臨床／手術助理、健保行政',佳筠:'正職・臨床主管／手術助理',妏玲:'正職・諮詢師、臨床助理、VIP個案關懷',鎧甄:'正職・諮詢師、臨床助理、設備管理',宥希:'正職・臨床助理、耗材管理',陳芸:'正職・護理師、諮詢師',依均:'正職・臨床助理',雅筑:'正職・臨床助理',宥文:'正職・櫃檯／臨床助理',宛渝:'正職・櫃檯／臨床助理',于綺:'兼職・臨床助理',嘉慈:'行銷（不列入臨床人力）'};
+const PEOPLE_DEF={doctors:DOCTORS.slice(),consult:CONSULT.slice(),clinic:CLINIC.slice(),others:OTHERS.slice(),titles:Object.assign({},STAFF_TITLE)};
+// 管理員在設定頁改的人員名單（存在雲端 kv 'people'）→ 套用到上面幾個名單（原地更新，其他程式照用）
+function applyPeople(){const P0=S.people||PEOPLE_DEF;const put=(arr,v)=>{if(Array.isArray(v))arr.splice(0,arr.length,...v)};put(DOCTORS,P0.doctors);put(CONSULT,P0.consult);put(CLINIC,P0.clinic);put(OTHERS,P0.others);for(const k of Object.keys(STAFF_TITLE))delete STAFF_TITLE[k];Object.assign(STAFF_TITLE,P0.titles||{})}
+const titleOf=u=>STAFF_TITLE[u.link||'']||STAFF_TITLE[u.name]||STAFF_TITLE[String(u.name||'').slice(1)]||'';
 const ROLES=['管理員','院長','個管主管','諮詢師','醫師','臨床'];
 const UPPER=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
 const LOWER=[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
@@ -356,8 +363,8 @@ const DEFAULT_PRICES=[ // 只有項目名稱（金額只存在診所雲端）
  {"id":"fren","name":"繫帶切除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["繫帶","frenectomy"]},
  {"id":"cyst","name":"囊腫摘除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["囊腫","cyst"]}
 ];
-const APP_VER='10/08 21:30';
-const BUILD=202610082130; // 年月日時分，用來判斷「比較新」的版本
+const APP_VER='10/08 21:50';
+const BUILD=202610082150; // 年月日時分，用來判斷「比較新」的版本
 const SYNC_VER=3; // 雲端用來擋掉舊版程式上傳
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
@@ -421,7 +428,7 @@ const isLower=t=>Math.floor(t/10)>=3;
 const priceOf=id=>S.prices.find(x=>x.id===id)||DEFAULT_PRICES.find(x=>x.id===id);
 /* ===== Google 雲端同步 ===== */
 const SYNC_KEY='lw-sync',SHADOW_KEY='lw-shadow';
-const KV_KEYS=['secrets','users','mkt','prices','priceFile','priceBase','priceDate','priceBy','priceApprover','priceDraft','priceVersions','itemImgs','roster','editor','trash','delLog'];
+const KV_KEYS=['secrets','people','users','mkt','prices','priceFile','priceBase','priceDate','priceBy','priceApprover','priceDraft','priceVersions','itemImgs','roster','editor','trash','delLog'];
 let SY=(()=>{try{return JSON.parse(localStorage.getItem(SYNC_KEY))||{}}catch(e){return {}}})();
 // SHADOW：每筆資料「上次和雲端一致時」的指紋（很小）；完整內容存在 IndexedDB（BASE），衝突時用來合併
 let SHADOW=(()=>{try{return JSON.parse(localStorage.getItem(SHADOW_KEY))||{}}catch(e){return {}}})();
@@ -557,7 +564,7 @@ async function syncNow(opts={}){
       SY.since=Math.max(SY.since,r2.ts||0);
       if(bad.length){bad.forEach(c=>delete SHADOW[c.key]);throw new Error(`雲端核對有 ${bad.length} 筆不一致，會自動重新上傳`)}
       syncSt.verified={at:Date.now(),n:ch.length}}
-    syncSt.prog='';syncSt.at=Date.now();SY.ok=Date.now();if(opts.force){SY.forcePending=0;syncSt.forceDone={at:Date.now(),n:ch.length}}saveSY();saveShadow();localSave();flushBase();
+    applyPeople();syncSt.prog='';syncSt.at=Date.now();SY.ok=Date.now();if(opts.force){SY.forcePending=0;syncSt.forceDone={at:Date.now(),n:ch.length}}saveSY();saveShadow();localSave();flushBase();
     if(changed&&!opts.quiet)softRender();
   }catch(e){syncSt.err=e.message||String(e);syncSt.prog='';saveShadow()}
   syncSt.busy=false;syncSt.step='';loginPaint();const pi=pendingInfo();if(!pi.n)syncSt.dirtyAt=0;else if(!syncSt.dirtyAt)syncSt.dirtyAt=Date.now();paintSync();
@@ -2115,6 +2122,15 @@ function drawChartsInPlan(){const p=P(V.pid);const q=p&&quoteOf(p,V.v);if(!q)ret
 
 /* ---- 設定 ---- */
 const confirm0=()=>true;
+const PG=[['doctors','醫師'],['consult','諮詢・個管'],['clinic','臨床・櫃檯'],['others','其他（不列入臨床人力）']];
+function peopleCard(){const P0=S.people||PEOPLE_DEF;
+  return `<details class="card sec" id="sec-people"><summary><h2>人員名單</h2><span class="pill">${P0.doctors.length+P0.consult.length+P0.clinic.length+P0.others.length} 位</span></summary>
+   <p class="muted" style="margin:0 0 8px">這裡的名單會用在主治醫師、諮詢師、個管師、對應人員的選單。停用的人只是從選單拿掉，舊病人紀錄上的名字會保留。</p>
+   ${PG.map(([g,t])=>`<label class="f">${t}</label><div class="row" style="flex-wrap:wrap;gap:6px">${P0[g].map(n=>`<span class="pill" style="font-size:13px;padding:3px 10px">${h(n)} <a href="#" style="color:var(--bad);margin-left:4px" onclick="act.pplDel('${g}',${js(n)});return false">✕</a></span>`).join('')||'<span class="muted">（無）</span>'}</div>
+     <div class="row" style="margin-top:6px"><input class="i grow" id="pp-${g}" placeholder="新增${t.replace(/（.*/,'')}姓名"><button class="btn sm" onclick="act.pplAdd('${g}')">新增</button></div>`).join('')}
+   <label class="f" style="margin-top:12px">職稱（顯示在人員帳號下方）</label>
+   ${[...P0.consult,...P0.clinic.filter(n=>!P0.consult.includes(n)),...P0.others].map(n=>`<div class="row" style="margin-top:4px"><span style="width:4.5em;font-size:14px">${h(n)}</span><input class="i grow" value="${h((P0.titles||{})[n]||'')}" onchange="act.pplTitle(${js(n)},this.value)" placeholder="例如 正職・臨床助理"></div>`).join('')}
+  </details>`}
 function codesCard(){const c=S.secrets||{};const st=k=>pwSet(k)?'<span class="pill g">已設定</span>':'<span class="pill r">尚未設定</span>';
   return `<div class="card" id="sec-codes"><h2>註冊碼與刪除密碼</h2>
    <p class="muted" style="margin:0 0 8px">註冊碼：新同事建立帳號時要輸入。刪除密碼：刪除、復原、放棄價目表草稿時要輸入。兩組都只存加密後的結果，程式碼和試算表裡都看不到原本的數字。${c.setBy?`<br>最近由 ${h(c.setBy)} 於 ${h(new Date(c.setAt).toLocaleString('zh-TW',{hour12:false}))} 設定。`:''}</p>
@@ -2125,10 +2141,11 @@ function codesCard(){const c=S.secrets||{};const st=k=>pwSet(k)?'<span class="pi
 function viewSettings(){
   const u=me();const admin=u.role==='管理員';
   return `<h1>設定</h1>${syncCard()}
-  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span>${x.rosterEdit||x.priceEdit?`<span style="display:block;margin-top:3px">${x.rosterEdit?'<span class="pill y" style="font-size:11px">排班主管</span> ':''}${x.priceEdit?'<span class="pill" style="font-size:11px">價目表編輯</span>':''}</span>`:''}</div>${admin?`${x.acc!==u.acc&&x.role!=='管理員'?`<select onchange="act.role(${js(x.acc)},this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link(${js(x.acc)},this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
+  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span>${titleOf(x)?`<span class="muted" style="display:block;font-size:12px">${h(titleOf(x))}</span>`:''}${x.rosterEdit||x.priceEdit?`<span style="display:block;margin-top:3px">${x.rosterEdit?'<span class="pill y" style="font-size:11px">排班主管</span> ':''}${x.priceEdit?'<span class="pill" style="font-size:11px">價目表編輯</span>':''}</span>`:''}</div>${admin?`${x.acc!==u.acc&&x.role!=='管理員'?`<select onchange="act.role(${js(x.acc)},this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link(${js(x.acc)},this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="臨床・櫃檯">${CLINIC.filter(d=>!CONSULT.includes(d)).map(d=>`<option ${x.link===d?'selected':''}>${h(d)}</option>`).join('')}</optgroup><optgroup label="其他">${OTHERS.map(d=>`<option ${x.link===d?'selected':''}>${h(d)}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
 
    ${admin?`<label class="f">排班主管（可以上傳班表）</label><div class="row">${S.users.filter(x=>x.role!=='管理員').map(x=>`<label style="font-size:14px"><input type="checkbox" ${x.rosterEdit?'checked':''} onchange="act.rosterPerm(${js(x.acc)},this.checked)"> ${h(x.name)}</label>`).join('')||'<span class="muted">還沒有其他帳號</span>'}</div><p class="muted" style="margin:4px 0 0">管理員本來就可以上傳；其他同事只會在首頁看到「今日值班」。</p>`:''}
 </div>
+  ${admin?peopleCard():''}
   ${admin?codesCard():''}
   <div class="card"><div class="row"><div class="grow"><h2 style="margin:0">價目表</h2><span class="muted">${h(S.priceDate||'')} 起使用・${S.prices.length} 項${S.priceDraft?'・有一份'+PST[S.priceDraft.status][0]:''}</span></div><button class="btn pri sm" onclick="go('prices')">打開價目表</button></div>
    ${admin?`<label class="f">可以編輯價目表的人</label><div class="row">${S.users.filter(x=>x.role!=='管理員').map(x=>`<label style="font-size:14px"><input type="checkbox" ${x.priceEdit?'checked':''} onchange="act.prPerm(${js(x.acc)},this.checked)"> ${h(x.name)}</label>`).join('')||'<span class="muted">還沒有其他帳號</span>'}</div><p class="muted" style="margin:4px 0 0">管理員本來就可以編輯；只有「院長」角色可以審核通過。</p>`:''}</div>
@@ -2338,6 +2355,10 @@ const act={
     S.prices=D.prices.filter(x=>!x.removed).map(x=>{delete x.removed;return x});S.itemImgs=D.imgs||{};S.priceDate=today();S.priceBy=me().name;S.priceApprover=D.approvedBy;S.priceDraft=null;_cand=null;save();closeModal();toast('價目表已更新上線');go('prices')},
   prFile(inp){const f=inp.files[0];if(!f)return;if(f.size>15e6)return toast('檔案太大（上限 15MB）');const fr=new FileReader();fr.onload=()=>{S.priceFile={name:f.name,src:fr.result,at:today(),by:me().name};save();toast(syncOn()?'已上傳，正在存到診所雲端…':'已上傳到這支手機');render()};fr.readAsDataURL(f)},
   async prFileOpen(w){const F=w==='cur'?S.priceFile:(S.priceVersions[w]||{}).file;if(!F)return;const win=window.open('','_blank');try{const d=await imgData(F.src);const b=await (await fetch(d)).blob();const u=URL.createObjectURL(b);if(win)win.location=u;else location.href=u}catch(e){if(win)win.close();toast('打不開檔案：'+e.message)}},
+  pplSet(fn){const P0=JSON.parse(JSON.stringify(S.people||PEOPLE_DEF));fn(P0);P0.setBy=me().name;P0.setAt=Date.now();S.people=P0;applyPeople();save();render();setTimeout(()=>{const e=document.getElementById('sec-people');if(e){e.open=true;e.scrollIntoView()}},30)},
+  pplAdd(g){const v=(document.getElementById('pp-'+g).value||'').trim();if(!v)return toast('請輸入姓名');const P0=S.people||PEOPLE_DEF;if(P0[g].includes(v))return toast('名單裡已經有 '+v);act.pplSet(P=>P[g].push(v));toast('已新增 '+v)},
+  pplDel(g,n){modal(`<h2>停用 ${h(n)}？</h2><p class="muted">只會從選單拿掉，舊病人紀錄上的名字會保留；之後可以再新增回來。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="closeModal();act.pplSet(P=>{P['${g}']=P['${g}'].filter(x=>x!==${js(n).replace(/"/g,"'")})});toast('已停用')">停用</button></div>`)},
+  pplTitle(n,v){act.pplSet(P=>{P.titles=P.titles||{};if(v.trim())P.titles[n]=v.trim();else delete P.titles[n]});toast('已更新職稱')},
   rosterPerm(acc,on){const u=S.users.find(x=>x.acc===acc);u.rosterEdit=on;stampUser(u);save();toast((on?'已設定 ':'已取消 ')+u.name+' 為排班主管');render()},
   prPerm(acc,on){const u=S.users.find(x=>x.acc===acc);u.priceEdit=on;stampUser(u);save();toast((on?'已開放 ':'已關閉 ')+u.name+' 編輯價目表')},
   msgRead(k){const p=P(V.pid);p.msgs[k].read=true;p.msgs[k].readBy=me().name;logP(p,'已讀醫師交代');save();render()},
@@ -2560,6 +2581,7 @@ Object.assign(act,{
 });
 
 /* ========= 啟動 ========= */
+applyPeople();
 if(S.me&&me())V={name:'home'};
 render();
 if(syncOn())syncNow({full:!SY.since});
