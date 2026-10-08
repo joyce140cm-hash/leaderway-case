@@ -354,8 +354,8 @@ const DEFAULT_PRICES=[ // 只有項目名稱（金額只存在診所雲端）
  {"id":"fren","name":"繫帶切除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["繫帶","frenectomy"]},
  {"id":"cyst","name":"囊腫摘除（健保）","cat":"健保","nhi":true,"unit":"次","alias":["囊腫","cyst"]}
 ];
-const APP_VER='10/08 21:00';
-const BUILD=202610082100; // 年月日時分，用來判斷「比較新」的版本
+const APP_VER='10/08 21:10';
+const BUILD=202610082110; // 年月日時分，用來判斷「比較新」的版本
 const SYNC_VER=3; // 雲端用來擋掉舊版程式上傳
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
@@ -454,7 +454,10 @@ async function loadImgs(){const ids=[...IMG_WAIT].filter(id=>!IMGC[id]);IMG_WAIT
 async function imgData(s){if(!s||!String(s).startsWith('img:'))return s;const id=s.slice(4);if(!IMGC[id]){const r=await api({action:'getimg',ids:[id]});if(r.imgs&&r.imgs[id])IMGC[id]=r.imgs[id]}return IMGC[id]||''}
 async function api(body){
   let r;const ac=window.AbortController?new AbortController():null;const tm=setTimeout(()=>ac&&ac.abort(),90000);try{r=await fetch(SY.url,{signal:ac?ac.signal:undefined,method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:SY.token,ver:SYNC_VER},body))})}catch(e){clearTimeout(tm);throw new Error(navigator.onLine===false?'這台目前沒有網路':e&&e.name==='AbortError'?'雲端回應太慢（超過 90 秒），請再試一次':'連不上診所雲端，請確認網路')}clearTimeout(tm);
-  const j=await r.json();if(!j.ok){if(j.old)checkVersion(true);throw new Error(j.err||'雲端錯誤')}return j;
+  const raw=await r.text();let j;try{j=JSON.parse(raw)}catch(e){throw new Error('雲端回應不是資料（'+raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,80)+'）')}
+  if(!j.ok){if(j.old)checkVersion(true);throw new Error(j.err||'雲端錯誤')}
+  if(body.action==='pull'&&!Array.isArray(j.rows))throw new Error('雲端回應少了資料（收到：'+Object.keys(j).join('、')+(j.msg?'｜'+j.msg:'')+'）');
+  return j;
 }
 function recs(){const out=S.patients.map(p=>({col:'p',id:p.id,obj:p,name:p.name}));for(const k of KV_KEYS)if(S[k]!==undefined)out.push({col:'kv',id:k,obj:S[k],name:k});return out}
 async function uploadImgs(obj,name){
