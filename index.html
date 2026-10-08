@@ -366,7 +366,7 @@ const DEFAULT_PRICES=[
  {id:'fren',name:'繫帶切除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['繫帶','frenectomy'],desc:''},
  {id:'cyst',name:'囊腫摘除（健保）',cat:'健保',nhi:true,unit:'次',price:0,min:0,max:0,alias:['囊腫','cyst'],desc:''}
 ];
-const APP_VER='10/08 20:30';
+const APP_VER='10/08 21:00';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap','ao4a','ao4b','ao4c','ao4d','ao4imp','overd2','overd3','overd4','apf','guide'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -970,7 +970,7 @@ function viewHome(){
   const td=myTodos();tmp.todo=td;const rt=rosterTodos().concat(mktTodos(),adminTodos(),priceTodos());tmp.rt=rt;
   const u=me();
   return `<h1>今日待辦</h1>
-  ${usage().pct>=80?`<div class="card" style="background:#FBE1DA;border-color:var(--bad)"><b style="color:var(--bad)">手機空間已用 ${usage().pct}%</b><p class="muted" style="margin:4px 0 0">請到「設定」匯出備份，並移除已完成病人的照片。</p></div>`:''}${eveningBanner()}${meetingCard()}${surgeryCard()}${shootCard()}${mktHomeCard()}${dutyCard()}
+  ${usage().pct>=80&&me().role==='管理員'?`<div class="card" style="background:#FBE1DA;border-color:var(--bad)"><b style="color:var(--bad)">手機空間已用 ${usage().pct}%</b><p class="muted" style="margin:4px 0 0">請到「設定」匯出備份，並移除已完成病人的照片。</p></div>`:''}${eveningBanner()}${meetingCard()}${surgeryCard()}${shootCard()}${mktHomeCard()}${dutyCard()}
   ${rt.length?`<div class="card list">${rt.map((x,i)=>`<div class="it" ${x.to?`onclick="tmp.rt[${i}].to()"`:''}><div class="grow"><b>${h(x.t)}</b></div><span class="pill ${x.c}">提醒</span></div>`).join('')}</div>`:''}
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">${isBoss()?'全部個案提醒':'我的個案提醒'}</h2><button class="btn pri sm" onclick="go('newp')">＋新增病人</button></div>
    <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${x.p.urgent?'<span class="pill r">優先</span> ':''}${h(x.p.name)}</b><span class="muted">${h(x.p.chart||'病歷號待補')}・${x.p.doctor?h(x.p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${x.c}">${h(x.t)}</span></div>`).join(''):`<p class="muted">${u.role==='臨床'?'目前沒有待標牙位的病人。':'目前沒有待辦。'}</p>`}</div></div>`;
@@ -1135,7 +1135,7 @@ function delInfo(kind,ref){
   if(kind==='patient'){const q=P(ref);return {label:`病人 ${q.name}（${q.chart||'無病歷號'}）整份資料`,trash:true,data:q,run(){S.patients=S.patients.filter(x=>x!==q);S.mkt=(S.mkt||[]).map(c=>c.pid===q.id?Object.assign(c,{pid:null}):c)},backup(){dlJSON(q,`${q.name}_病人資料備份_${todayISO()}`)},after(){tmp={};go('patients')}}}
   if(kind==='mktVisit'){const c=S.mkt.find(x=>x.id===V.mid);const v=c.visits.find(x=>x.id===ref);return {label:`行銷 case ${c.name}｜回診 ${v.date}`,trash:true,data:v,mid:c.id,run(){c.visits=c.visits.filter(x=>x!==v)},backup(){dlJSON({行銷case:c.name,回診:v},`${c.name}_回診備份_${todayISO()}`)}}}
   if(kind==='itemImg'){const it=priceOf(ref);const L=(S.itemImgs[ref]||[]);return {label:`價目表圖片：${it?it.name:ref}（${L.length} 張）`,trash:false,run(){delete S.itemImgs[ref]},backup(){dlImgs(L,`${it?it.name:ref}_圖片備份_${todayISO()}`)}}}
-  if(kind==='reset')return {label:'這支手機上的全部資料（帳號、病人、報價）'+(syncOn()?'，並中斷雲端連線（雲端資料不會被刪除）':''),trash:false,run(){localStorage.removeItem(KEY);S=blank();tmp={};SY={};SHADOW={};saveSY();saveShadow()},backup(){dlJSON(S,`立威試用資料備份_${todayISO()}`)},after(){render()}};
+  if(kind==='reset')return {label:'這台裝置上的全部資料（帳號、病人、報價）'+(syncOn()?'，並中斷雲端連線（雲端資料不會被刪除）':''),trash:false,run(){localStorage.removeItem(KEY);S=blank();tmp={};SY={};SHADOW={};saveSY();saveShadow()},backup(){dlJSON(S,`立威試用資料備份_${todayISO()}`)},after(){render()}};
   return null;
 }
 function logP(p,t){p.log=p.log||[];p.log.unshift({at:new Date().toLocaleString('zh-TW',{hour12:false}),by:me()?me().name:'',t})}
@@ -2001,11 +2001,11 @@ function viewSettings(){
    ${admin?`<label class="f">可以編輯價目表的人</label><div class="row">${S.users.filter(x=>x.role!=='管理員').map(x=>`<label style="font-size:14px"><input type="checkbox" ${x.priceEdit?'checked':''} onchange="act.prPerm('${h(x.acc)}',this.checked)"> ${h(x.name)}</label>`).join('')||'<span class="muted">還沒有其他帳號</span>'}</div><p class="muted" style="margin:4px 0 0">管理員本來就可以編輯；只有「院長」角色可以審核通過。</p>`:''}</div>
   ${admin?`<div class="card"><h2>最近刪除（30 天內可復原）</h2>${(S.trash||[]).length?`<div class="list">${S.trash.map(t=>`<div class="it"><div class="grow"><b>${h(t.label)}</b><span class="muted">${new Date(t.at).toLocaleString('zh-TW',{hour12:false})}・${h(t.by)}</span></div><button class="btn sm" onclick="act.restore('${t.id}')">復原</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">沒有可復原的資料。</p>'}
    ${(S.delLog||[]).length?`<details style="margin-top:10px"><summary class="muted">刪除紀錄（90 天）</summary>${S.delLog.map(x=>`<div class="muted" style="font-size:13px">${new Date(x.at).toLocaleString('zh-TW',{hour12:false})}・${h(x.by)}・${h(x.label)}・${x.backup?'有備份':'沒有備份'}</div>`).join('')}</details>`:''}</div>`:''}
-  <div class="card"><h2>備份與空間</h2><p style="margin:0 0 6px">目前用了 <b>${usage().mb.toFixed(1)} MB</b>（約 ${usage().pct}%）</p><div class="bar"><i style="width:${usage().pct}%;background:${usage().pct>=80?'var(--bad)':'var(--orange)'}"></i></div>
-   <div class="row" style="margin-top:10px"><button class="btn pri" onclick="act.exportAll()">匯出備份</button><label class="btn" for="imp-f">匯入備份</label><input id="imp-f" type="file" accept=".json,application/json" hidden onchange="act.importAll(this)"></div>
-   <p class="muted" style="margin:6px 0 0">備份檔包含帳號、病人、報價和照片。換手機或資料不見時，可以用「匯入備份」還原。</p>
-   <details style="margin-top:8px"><summary class="muted">📱 加入主畫面（iPhone）</summary><p class="muted" style="margin:6px 0 0">Safari 打開網址 → 分享 →「加入主畫面」。從桌面圖示打開，資料比較不會被清掉。</p></details></div>
-  <div class="card"><h2>試用資料</h2><p class="muted">清除這支手機上所有試用資料（帳號、病人、報價）。</p><button class="btn" onclick="act.del('reset')">清除全部試用資料</button></div>`;
+  ${admin?`<div class="card"><h2>資料存放</h2>${syncOn()?`<p style="margin:0 0 6px">✓ 資料與照片都存在<b>診所 Google 雲端</b>（試算表＋雲端硬碟），會自動保存。</p>${usage().pct>=80?`<p style="margin:0 0 6px;color:var(--bad)">這台裝置的暫存空間快滿了（${usage().pct}%），請按「立即同步」後重新整理。</p>`:''}`:`<p style="margin:0 0 6px">尚未連上診所雲端，資料只存在這台裝置（已用 ${usage().mb.toFixed(1)} MB，約 ${usage().pct}%）。</p><div class="bar"><i style="width:${usage().pct}%;background:${usage().pct>=80?'var(--bad)':'var(--orange)'}"></i></div>`}
+   <div class="row" style="margin-top:10px"><button class="btn ${syncOn()?'':'pri'}" onclick="act.exportAll()">匯出備份</button><label class="btn" for="imp-f">匯入備份</label><input id="imp-f" type="file" accept=".json,application/json" hidden onchange="act.importAll(this)"></div>
+   <p class="muted" style="margin:6px 0 0">${syncOn()?'雲端已經自動保存；「匯出備份」是額外再下載一份到這台電腦（照片仍在雲端硬碟）。':'備份檔包含帳號、病人、報價和照片。換手機或資料不見時，可以用「匯入備份」還原。'}</p>
+   <details style="margin-top:8px"><summary class="muted">📱 加入主畫面（iPhone）</summary><p class="muted" style="margin:6px 0 0">Safari 打開網址 → 分享 →「加入主畫面」，之後從桌面圖示打開。</p></details></div>
+  <div class="card"><h2>清除這台裝置的資料</h2><p class="muted">只清除這台裝置上的暫存（帳號、病人、報價）${syncOn()?'，並中斷雲端連線。<b>診所雲端的資料不受影響</b>，重新貼上連線網址就會再下載回來':''}。</p><button class="btn" onclick="act.del('reset')">清除這台裝置的資料</button></div>`:''}`;
 }
 
 /* ========= 動作 ========= */
