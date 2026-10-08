@@ -111,6 +111,11 @@ textarea.i{min-height:150px}
 .tablewrap{overflow-x:auto}
 /* versions */
 .mcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}.mc{all:unset;cursor:pointer;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}.mc img,.mc-ph{width:100%;aspect-ratio:2/1;object-fit:cover;background:#222;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:14px}.mc-t{padding:8px 10px 2px;font-size:14px}.mc-s{padding:0 10px 10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px}
+details.sec>summary{list-style:none;cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary h2{margin:0;flex:1}
+details.sec>summary::after{content:'▾';color:var(--muted)}details.sec:not([open])>summary::after{content:'▸'}
+details.sec[open]>summary{margin-bottom:10px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px}
 .tile{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px}
 .tile b{font-family:var(--display);font-size:15px}.tile .n{font-size:28px;font-weight:700;line-height:1.1;color:var(--ink)}
@@ -305,7 +310,7 @@ const DEFAULT_PRICES=[
  {id:'ortho',name:'成人矯正（待選款式）',cat:'成人矯正',unit:'次',price:120000,min:120000,max:270000,alias:['成人矯正','矯正'],dep:3000,pay:'資料收集 $3,000（可抵矯正費）'},
  {id:'tmj',name:'顳顎關節治療',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['tmj','顳顎'],pay:''}
 ];
-const APP_VER='10/08 12:30';
+const APP_VER='10/08 13:30';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -601,7 +606,7 @@ function viewMktOne(){
    <label class="f">備註</label><input class="i" value="${h(c.note||'')}" placeholder="例如：教學日、需遮眼睛" onchange="act.mktSet('note',this.value)"></div>
   <div class="card"><h2>回診日</h2>
    <div class="row"><input class="i" type="date" id="mv-date" style="width:170px"><input class="i grow" id="mv-note" placeholder="要拍什麼（例如 術後一週拍照）"><button class="btn pri" onclick="act.mktVisit()">加入</button></div>
-   <div class="list" style="margin-top:8px">${(c.visits||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(v=>`<div class="it"><div class="grow"><b>${mdOf(v.date)}（${WK[new Date(v.date).getDay()]}）</b><span class="muted">${h(v.note||'')}</span></div><button class="btn sm" onclick="act.mktVisitDel('${v.id}')">移除</button></div>`).join('')||'<p class="muted">還沒有回診日。</p>'}</div></div>`;
+   <div class="list" style="margin-top:8px">${(c.visits||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(v=>`<div class="it"><div class="grow"><b>${mdOf(v.date)}（${WK[new Date(v.date).getDay()]}）</b><span class="muted">${h(v.note||'')}</span></div><button class="btn sm" onclick="act.del('mktVisit','${v.id}')">移除</button></div>`).join('')||'<p class="muted">還沒有回診日。</p>'}</div></div>`;
 }
 
 /* ---- 患者 ---- */
@@ -634,7 +639,7 @@ function viewNewPatient(){
    <label class="f">全景 X 光</label>
    <div class="row"><label class="btn" for="np-x">上傳照片</label><input id="np-x" type="file" accept="image/*" hidden onchange="act.pickX(this)"><button class="btn" onclick="act.sampleX()">使用範例 X 光</button></div>
    <div id="np-prev" style="margin-top:10px">${tmp.x?`<img src="${tmp.x}" style="width:100%;border-radius:8px">`:''}</div>
-   <button class="btn pri block" style="margin-top:16px" onclick="${p?'act.updatePatient()':'act.savePatient()'}">${p?'儲存資料':'建立病人，開始標牙位'}</button>
+   <button class="btn pri block" style="margin-top:16px" onclick="${p?'act.updatePatient()':'act.savePatient()'}">${p?'儲存資料':'建立病人，開始標牙位'}</button>${p?`<button class="btn block" style="margin-top:24px;color:var(--bad)" onclick="act.del('patient','${p.id}')">刪除這位病人</button>`:''}
   </div>`;
 }
 function viewPatient(){
@@ -648,11 +653,12 @@ function viewPatient(){
   ${nextBtn(p)}
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">牙位</h2><span class="pill ${p.teethDone?'g':'y'}">${p.teethDone?'已確認':'未完成'}</span><button class="btn sm" onclick="go('mark',{pid:'${p.id}'})">${p.teethDone?'修改牙位':'開始標牙位'}</button></div></div>
   <div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">臨床照片</h2><label class="btn sm" for="pp-photo">＋上傳照片</label><input id="pp-photo" type="file" accept="image/*" multiple hidden onchange="act.addPhotos(this)"></div>
-   ${(p.photos||[]).length?`<div class="vers">${p.photos.map(x=>`<div class="ver" style="padding:6px"><img src="${x.src}" style="width:100%;border-radius:6px;display:block"><label style="font-size:13px;display:block;margin-top:4px"><input type="checkbox" ${x.use?'checked':''} onchange="act.photoUse('${x.id}',this.checked)"> 放入計畫書</label><button class="btn sm" style="margin-top:4px" onclick="act.photoDel('${x.id}')">移除</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">上傳時會自動壓縮，勾選的照片會放進計畫書。</p>'}</div>
+   ${(p.photos||[]).length?`<div class="vers">${p.photos.map(x=>`<div class="ver" style="padding:6px"><img src="${x.src}" style="width:100%;border-radius:6px;display:block"><label style="font-size:13px;display:block;margin-top:4px"><input type="checkbox" ${x.use?'checked':''} onchange="act.photoUse('${x.id}',this.checked)"> 放入計畫書</label><button class="btn sm" style="margin-top:4px" onclick="act.del('photo','${x.id}')">移除</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">上傳時會自動壓縮，勾選的照片會放進計畫書。</p>'}</div>
   ${flowCards(p)}
   <div class="card"><div class="row" style="margin-bottom:10px"><h2 class="grow" style="margin:0">報價紀錄</h2><button class="btn pri sm" onclick="act.newQuote('${p.id}')">＋貼醫囑出報價</button></div>
    ${p.quotes.length?`<div class="vers">${p.quotes.slice().reverse().map(q=>`<button class="ver" onclick="go('plan',{pid:'${p.id}',v:${q.v}})"><b>第 ${q.v} 版</b><span class="muted">${h(q.date)}</span><div style="font-weight:700;color:var(--deep)">NT$ ${money(calc(p,q).total)}</div><span class="pill ${q.signed?'g':''}">${q.signed?'已簽名':'草稿'}</span></button>`).join('')}</div>`:'<p class="muted">還沒有報價。</p>'}
-  </div>`;
+  </div>
+  ${(p.log||[]).length?`<details class="card sec"><summary><h2>修改紀錄</h2><span class="pill">${p.log.length} 筆</span></summary>${p.log.map(l=>`<div class="muted" style="font-size:13px">${h(l.at)}・${h(l.by)}・${h(l.t)}</div>`).join('')}</details>`:''}`;
 }
 
 /* ===== 流程：NV、資收、醫師設計、手術、追蹤 ===== */
@@ -679,61 +685,10 @@ function parseNV(t){
 }
 function signedQ(p){return p.quotes.filter(q=>q.signed).at(-1)||null}
 function dcList(p){const q=signedQ(p)||p.quotes.at(-1);return q&&q.exams?q.exams.filter(id=>{const e=EXAMS.find(x=>x.id===id);return e&&e.type!=='nhi'}):[]}
-function dcStat(p){const L=dcList(p);p.dc=p.dc||{};const up=L.filter(id=>p.dc[id]&&p.dc[id].up).length;const got=L.filter(id=>p.dc[id]&&p.dc[id].got).length;return {L,up,got,total:L.length,done:L.length>0&&up===L.length}}
 function docsOf(p){const s=new Set();if(p.doctor)s.add(p.doctor);for(const q of p.quotes)if(q.doctor)s.add(q.doctor);for(const n of (p.nv||[]))if(n.doc)s.add(n.doc);return [...s]}
 function treatLabel(p){const q=signedQ(p)||p.quotes.at(-1);if(!q)return '未報價';const cats=[...new Set(q.items.filter(i=>!i.nhi&&!i.gift).map(i=>i.cat||'其他'))];return cats.join('、')||'健保治療'}
-function caseStage(p){
-  if(p.closed)return ['未成交結案','r'];
-  if(p.surgery&&p.surgery.date)return ['已排手術 '+md(p.surgery.date),'g'];
-  if(p.design&&p.design.status==='done')return ['已完成設計','g'];
-  if(p.design&&p.design.status==='lack')return [p.redo&&p.redo.status==='cannot'?'病人無法回來補件':'資料不足・待補件','y'];
-  if(p.collect){const st=dcStat(p);return st.done?['待設計','y']:['資料上傳 '+st.up+'/'+st.total,'y']}
-  if(signedQ(p))return ['已簽名・排程中',''];
-  return [stageOf(p)[0],stageOf(p)[1]];
-}
-function flowTodos(){
-  const out=[];const t=todayISO();
-  for(const p of S.patients){
-    if(p.closed)continue;const mg=p.mgr?'（個管：'+p.mgr+'）':'';
-    if(!p.xray&&!p.panoNote)out.push({p,t:'尚未上傳 Pano',c:'r',to:()=>go('patient',{pid:p.id})});
-    if(signedQ(p)&&(p.nv||[]).length){const none=p.nv.filter(n=>n.status==='none').length;if(none)out.push({p,t:`NV ${p.nv.length} 項：已約 ${p.nv.filter(n=>n.status==='booked').length}、未約 ${none}${mg}`,c:'y',to:()=>go('patient',{pid:p.id})})}
-    if(p.trackDue&&p.trackDue<=t)out.push({p,t:`追蹤第 ${(p.track||[]).length+1} 次：${p.trackWhy||''}${mg}`,c:p.trackDue<t?'r':'y',to:()=>go('patient',{pid:p.id})});
-    if(p.collect){const st=dcStat(p);if(!st.done){if(p.collect.date===t)out.push({p,t:`今日資收・資料上傳 ${st.up}/${st.total}${mg}`,c:'y',to:()=>go('patient',{pid:p.id})});else out.push({p,t:`逾期未上傳 ${st.up}/${st.total}（${md(p.collect.date)} 資收）${mg}`,c:'r',to:()=>go('patient',{pid:p.id})})}
-      else if(!p.design)out.push({p,kind:'doc',t:`待設計：資料已上傳`,c:'y',to:()=>go('patient',{pid:p.id})})}
-    if(p.surgery&&p.surgery.date){const d=(new Date(p.surgery.date+'T00:00:00')-new Date(t+'T00:00:00'))/864e5;const st=dcStat(p);if(d>=0&&d<=7&&!st.done)out.push({p,t:`${md(p.surgery.date)} 手術：資料收集 ${st.up}/${st.total}${mg}`,c:'y',to:()=>go('patient',{pid:p.id})})}
-    if(p.design&&p.design.status==='lack'&&!(p.redo&&p.redo.status)){const L=p.design.lack;out.push({p,t:`補件：${L.items.map(id=>(EXAMS.find(e=>e.id===id)||{name:id}).name).join('、')}｜最好 ${md(L.best)} 前、最晚 ${md(L.last)}${mg}`,c:t>L.best?'r':'y',to:()=>go('patient',{pid:p.id})})}
-    if(p.design&&p.design.status==='done'&&!(p.surgery&&p.surgery.date))out.push({p,t:`可安排手術${mg}`,c:'g',to:()=>go('patient',{pid:p.id})});
-  }
-  return out;
-}
 function locked(q){if(q.signed)return true;const d=new Date(q.ts);const n=new Date();return iso(d)!==iso(n)||n.getHours()>=21}
 /* ---- 病人頁的流程區塊 ---- */
-function flowCards(p){
-  const u=me();const isDoc=['醫師','管理員'].includes(u.role);const sq=signedQ(p);let out='';
-  if(!p.xray){out+=`<div class="card" style="border-color:${p.panoNote?'var(--line)':'var(--bad)'}"><div class="row"><h2 class="grow" style="margin:0">${p.panoNote?'未拍 Pano：'+h(p.panoNote):'⚠ 尚未上傳 Pano'}</h2><button class="btn sm" onclick="tmp.x=undefined;go('editp',{pid:'${p.id}'})">上傳</button></div>
-    <label class="f">無法拍攝的原因</label><div class="row"><select class="i grow" id="pn-r"><option value="">選擇原因</option>${NOPANO.map(x=>`<option ${p.panoNote&&p.panoNote.startsWith(x)?'selected':''}>${x}</option>`).join('')}</select><input class="i grow" id="pn-n" placeholder="備註"><button class="btn sm" onclick="act.panoNote()">儲存</button></div></div>`}
-  if(sq||(p.nv||[]).length){out+=`<div class="card"><div class="row" style="margin-bottom:6px"><h2 class="grow" style="margin:0">預約排程（NV）</h2><button class="btn sm" onclick="act.nvAdd()">＋新增</button></div>
-    ${(p.nv||[]).length?p.nv.map(n=>`<div class="card" style="margin:8px 0;padding:10px 12px;background:${n.status==='none'?'#FFF8EF':'#fff'}">
-      <div class="row"><b class="grow">${n.doc?h(n.doc):'<span class="pill y">醫師待確認</span>'}｜${h(n.task)}</b><span class="pill ${n.status==='booked'?'g':n.status==='hold'?'y':'r'}">${n.status==='booked'?'已約':n.status==='hold'?'暫不約・追蹤中':'尚未處理'}</span></div>
-      ${!n.doc?`<select class="i" style="margin-top:6px" onchange="act.nvDoc('${n.id}',this.value)"><option value="">選擇醫師</option>${DOCTORS.map(d=>`<option>${d}</option>`).join('')}</select>`:''}
-      ${(n.dates||[]).map(d=>`<div class="row" style="margin-top:6px;font-size:14px"><span class="grow">${md(d.date)}（${WK[new Date(d.date+'T00:00:00').getDay()]}）${h(d.time||'')}</span><span class="pill ${d.status==='done'?'g':d.status==='noshow'?'r':''}">${d.status==='done'?'已完成':d.status==='noshow'?'未到':'已約'}</span>${d.status==='sched'?`<button class="btn sm" onclick="act.nvMark('${n.id}','${d.id}','done')">完成</button><button class="btn sm" onclick="act.nvMark('${n.id}','${d.id}','noshow')">未到</button>`:''}</div>`).join('')}
-      ${n.hold?`<p class="muted" style="margin:6px 0 0">暫不約：${h(n.hold.reason)}・追蹤日 ${md(n.hold.follow)}</p>`:''}
-      <div class="row" style="margin-top:8px"><input class="i" type="date" id="nd-${n.id}" style="width:160px"><input class="i" id="nt-${n.id}" placeholder="時間 14:30" style="width:110px"><button class="btn sm pri" onclick="act.nvBook('${n.id}')">登記預約</button><button class="btn sm" onclick="act.nvHold('${n.id}')">暫不約</button></div></div>`).join(''):'<p class="muted">醫囑裡沒有 NV，可以按「＋新增」。</p>'}</div>`}
-  if(sq){const st=dcStat(p);out+=`<div class="card"><div class="row" style="margin-bottom:6px"><h2 class="grow" style="margin:0">資收與資料收集</h2>${p.collect?`<span class="pill g">${md(p.collect.date)} 已資收 NT$ ${money(p.collect.amount)}</span>`:`<button class="btn pri sm" onclick="act.collect()">登記資收</button>`}</div>
-    ${st.total?`<table class="items"><thead><tr><th>項目</th><th>已收集</th><th>已上傳</th></tr></thead><tbody>${st.L.map(id=>{const e=EXAMS.find(x=>x.id===id);const s2=(p.dc||{})[id]||{};return `<tr><td>${h(e?e.name:id)}</td><td><input type="checkbox" ${s2.got?'checked':''} onchange="act.dc('${id}','got',this.checked)"></td><td><input type="checkbox" ${s2.up?'checked':''} onchange="act.dc('${id}','up',this.checked)"></td></tr>`}).join('')}</tbody></table>
-     <p class="muted" style="margin:6px 0 0">已上傳 ${st.up}/${st.total}${st.done?'・全部完成，等待醫師設計':''}</p>`:'<p class="muted" style="margin:0">簽名版報價沒有勾選檢查項目。</p>'}</div>`;
-   out+=`<div class="card"><h2>醫師設計回報</h2>${p.design?(p.design.status==='done'?`<p style="margin:0"><span class="pill g">已完成設計</span> ${h(p.design.by)}・${h(p.design.at)}・可以安排手術</p>`:`<p style="margin:0 0 6px"><span class="pill y">資料不足</span> ${h(p.design.by)}・${h(p.design.at)}</p><p style="margin:0">待補：${p.design.lack.items.map(id=>(EXAMS.find(e=>e.id===id)||{name:id}).name).join('、')}｜原因：${h(p.design.lack.reason)}${p.design.lack.note?'（'+h(p.design.lack.note)+'）':''}<br>最好 ${md(p.design.lack.best)} 前、最晚 ${md(p.design.lack.last)}</p>
-     ${p.redo?`<p style="margin:8px 0 0"><span class="pill ${p.redo.status==='booked'?'g':'r'}">${p.redo.status==='booked'?'已約回診補件 '+md(p.redo.date):'病人無法回來：'+h(p.redo.reason)}</span>${p.redo.note?' '+h(p.redo.note):''}</p>`:`<div class="row" style="margin-top:8px"><input class="i" type="date" id="rd-date" style="width:160px"><button class="btn sm pri" onclick="act.redoBook()">已約回診補件</button><button class="btn sm" onclick="act.redoCannot()">病人無法回來</button></div>`}`):`<p class="muted" style="margin:0 0 8px">${p.collect&&st.done?'資料已上傳，等待醫師設計。':'資收並上傳資料後，醫師在這裡回報。'}</p>`}
-     ${isDoc?`<div class="row" style="margin-top:10px"><button class="btn sm pri" onclick="act.designDone()">✅ 已完成設計，可安排手術</button><button class="btn sm" onclick="act.designLack()">⚠ 資料收集不足</button></div>`:''}</div>`;
-   out+=`<div class="card"><h2>手術與麻醉</h2>${p.surgery&&p.surgery.date?`<p style="margin:0 0 8px"><b>${md(p.surgery.date)}（${WK[new Date(p.surgery.date+'T00:00:00').getDay()]}）${h(p.surgery.time||'')}</b>｜麻醉：${h(p.surgery.anes||'—')}${p.surgery.anesTime?' '+h(p.surgery.anesTime):''}</p>`:''}
-     <div class="row"><input class="i" type="date" id="sg-date" style="width:160px" value="${p.surgery?p.surgery.date||'':''}"><input class="i" id="sg-time" placeholder="手術時間 09:00" style="width:130px" value="${h(p.surgery?p.surgery.time||'':'')}"></div>
-     <div class="row" style="margin-top:6px"><select class="i grow" id="sg-anes">${['局部麻醉','鎮靜舒眠','全身麻醉','AO4 舒眠','AO4 全麻'].map(x=>`<option ${p.surgery&&p.surgery.anes===x?'selected':''}>${x}</option>`).join('')}</select><input class="i grow" id="sg-at" placeholder="麻醉時間（例如 08:30–11:30）" value="${h(p.surgery?p.surgery.anesTime||'':'')}"><button class="btn sm pri" onclick="act.surgery()">儲存</button></div></div>`;}
-  if(p.closed){const c=p.closed;out+=`<div class="card" style="border-color:var(--bad)"><h2>未成交結案</h2><p style="margin:0">原因：${h(c.reason)}・${h(c.at)}</p>${c.eval?`<p class="muted" style="margin:6px 0 0">自評表：${h(c.eval.main)}${c.eval.ours.length?'｜'+h(c.eval.ours.join('、')):''}${c.eval.traits.length?'｜病人特質：'+h(c.eval.traits.join('、')):''}</p>`:''}</div>`}
-  else if((p.track||[]).length||p.trackDue||(p.quotes.length&&['track','open'].includes(bucket(p)))){out+=`<div class="card" id="sec-track"><div class="row"><h2 class="grow" style="margin:0">追蹤紀錄</h2><button class="btn sm pri" onclick="act.trackOpen()">登記追蹤</button></div>
-    ${!(p.track||[]).length&&!p.trackDue?`<p class="muted" style="margin:6px 0">${bucket(p)==='track'?'報價已過期，請開始追蹤。':'報價期限內，有聯繫病人也可以先登記。'}</p>`:''}${p.trackDue?`<p class="muted" style="margin:6px 0">下次追蹤：${md(p.trackDue)}・${h(p.trackWhy||'')}</p>`:''}
-    ${(p.track||[]).map((x,i)=>`<div class="muted" style="font-size:13px">第 ${i+1} 次・${h(x.at)}・${h(x.method)}・${h(x.result)}${x.note?'・'+h(x.note):''}</div>`).join('')}</div>`}
-  return out;
-}
 /* ---- 醫師 case ---- */
 function evalReport(){
   const rows=CONSULT.map(n=>{const ps=S.patients.filter(p=>p.consult===n);const cl=ps.filter(p=>p.closed&&p.closed.eval);const q=ps.filter(p=>p.quotes.length).length,sg=ps.filter(p=>signedQ(p)).length;
@@ -849,7 +804,6 @@ function surgeryCard(){
   return `<div class="card" style="border-color:var(--orange)"><h2>今日手術</h2><div class="list">${L.map(p=>`<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.surgery.time||'時間待補')}・${h(p.name)}</b><span class="muted">${h(p.doctor||'醫師待補')}・${h(p.surgery.anes||'局部麻醉')}${p.surgery.anesTime?' '+h(p.surgery.anesTime):''}${p.surgery.items&&p.surgery.items.length?'・'+h(p.surgery.items.join('、')):''}</span></div></div>`).join('')}</div></div>`;
 }
 function meetingCard(){const d=rosterToday();if(!d||!/會|訓練/.test(d.note||''))return '';return `<div class="card" style="border-color:var(--orange);background:#FFF8EF"><h2 style="margin:0">今日會議：${h(d.note)}</h2></div>`}
-function adminTodos(){return []}
 function viewHome(){
   const td=myTodos();tmp.todo=td;const rt=rosterTodos().concat(mktTodos(),adminTodos());tmp.rt=rt;
   const u=me();
@@ -861,7 +815,6 @@ function viewHome(){
 }
 /* ---- 下一步 ---- */
 const scrollTo_=id=>`(document.getElementById('${id}')||{scrollIntoView(){}}).scrollIntoView({behavior:'smooth',block:'start'})`;
-function needsData(p){const sq=signedQ(p);if(!sq)return false;return dcList(p).length>0||(calc(p,sq).dep||0)>0}
 function nextStep(p){
   if(p.closed||p.done)return null;
   const q=p.quotes.at(-1),sq=signedQ(p);
@@ -902,6 +855,124 @@ function viewDocCase(D,own){
   ${list.length?`<div class="mcgrid">${list.map(p=>{const st=caseStage(p);const ds=docsOf(p).filter(x=>!(own&&x===D)).map(x=>DOCCH[x]||x.slice(0,1)).join('／');
     return `<button class="mc" onclick="go('patient',{pid:'${p.id}'})">${p.xray?`<img src="${p.xray}" alt="Pano">`:`<div class="mc-ph">${p.photosCleared?'<b style="font-size:20px;letter-spacing:.2em">療程中</b>':h(p.name)+`<br><small>${p.panoNote?h(p.panoNote):'尚未上傳 Pano'}</small>`}</div>`}
      <div class="mc-t"><b>${h(p.name)}</b>｜${h(treatLabel(p))}${ds?'｜'+h(ds):''}</div><div class="mc-s"><span class="pill ${st[1]}">${h(st[0])}</span><span class="muted">建檔 ${h(p.created||'')}</span></div></button>`}).join('')}</div>`:`<p class="muted">${f==='design'?'目前沒有待設計的個案。':'目前沒有個案。'}</p>`}`;
+}
+
+/* ===== 資料收集、設計、手術（第 2 段） ===== */
+const DATA=['intra','extra','face5d','ioscan','ct','ceph'];
+const exName=id=>(EXAMS.find(e=>e.id===id)||{name:id}).name;
+function dcStat(p){p.dc=p.dc||{};const got=DATA.filter(id=>p.dc[id]&&p.dc[id].got).length,up=DATA.filter(id=>p.dc[id]&&p.dc[id].up).length;return {L:DATA,got,up,total:got,done:!!(p.collect&&p.collect.cloud)}}
+function needsData(p){const sq=signedQ(p);if(!sq)return false;return dcList(p).length>0||(calc(p,sq).dep||0)>0||!!p.collect}
+function secCard(id,title,done,summary,body,o={}){
+  return `<details class="card sec" id="${id}" ${done&&!o.open?'':'open'} ${o.style?`style="${o.style}"`:''}><summary><h2>${title}</h2>${summary||''}</summary>${body}</details>`;
+}
+function caseStage(p){
+  if(p.closed)return ['未成交結案','r'];
+  if(p.done)return ['已結案',''];
+  if(p.surgery&&p.surgery.date)return ['已排手術 '+md(p.surgery.date),'g'];
+  if(p.design&&p.design.status==='done')return ['已完成設計・待排手術','g'];
+  if(p.design&&p.design.status==='lack')return [p.redo&&p.redo.status==='cannot'?'病人無法回來補件':'資料不足・待補件','y'];
+  if(p.collect)return p.collect.cloud?['待設計','y']:['資料收集中','y'];
+  if(signedQ(p))return needsData(p)?['已成交・待資收','y']:['療程中','g'];
+  return [stageOf(p)[0],stageOf(p)[1]];
+}
+function flowTodos(){
+  const out=[];const t=todayISO();
+  for(const p of S.patients){
+    if(p.closed||p.done)continue;const mg=p.mgr?'（個管：'+p.mgr+'）':'';const sq=signedQ(p);const go_=()=>go('patient',{pid:p.id});
+    if(!p.xray&&!p.panoNote&&!p.photosCleared)out.push({p,t:'尚未上傳 Pano',c:'r',to:go_});
+    if(sq&&(p.nv||[]).length){const none=p.nv.filter(n=>n.status==='none').length;if(none&&booked(p))out.push({p,t:`NV ${p.nv.length} 項：已約 ${p.nv.filter(n=>n.status==='booked').length}、未約 ${none}${mg}`,c:'y',to:go_})}
+    if(p.trackDue&&p.trackDue<=t)out.push({p,t:`追蹤第 ${(p.track||[]).length+1} 次：${p.trackWhy||''}${mg}`,c:p.trackDue<t?'r':'y',to:go_});
+    if(sq&&needsData(p)&&!p.collect){const pl=p.collectPlan;out.push({p,t:pl?`預計 ${md(pl)} 資收${mg}`:`已成交・待安排資收${mg}`,c:pl&&pl<t?'r':'y',to:go_})}
+    if(p.collect&&!p.collect.cloud){if(p.collect.date>=t)out.push({p,t:`今日資收・請確認資料已上傳雲端${mg}`,c:'y',to:go_});else out.push({p,t:`逾期未上傳雲端（${md(p.collect.date)} 資收）${mg}`,c:'r',to:go_})}
+    if(p.collect&&p.collect.cloud&&!p.design)out.push({p,kind:'doc',t:'待設計：資料已上傳雲端',c:'y',to:go_});
+    if(p.surgery&&p.surgery.date){const d=(new Date(p.surgery.date+'T00:00:00')-new Date(t+'T00:00:00'))/864e5;if(d>=0&&d<=7&&!(p.collect&&p.collect.cloud))out.push({p,t:`${md(p.surgery.date)} 手術：資料還沒上傳雲端${mg}`,c:'r',to:go_})}
+    if(p.design&&p.design.status==='lack'){const L=p.design.lack;
+      if(!p.redo)out.push({p,t:`補件：${L.items.map(exName).join('、')}｜最好 ${md(L.best)} 前、最晚 ${md(L.last)}${mg}`,c:t>L.best?'r':'y',to:go_});
+      else out.push({p,kind:'doc',t:p.redo.status==='booked'?`補件回覆：已約 ${md(p.redo.date)} 回診`:`補件回覆：病人無法回來（${p.redo.reason}）`,c:p.redo.status==='booked'?'g':'r',to:go_});}
+    if(p.design&&p.design.status==='done'&&!(p.surgery&&p.surgery.date))out.push({p,t:`可安排手術${mg}`,c:'g',to:go_});
+  }
+  return out;
+}
+function nvSection(p){
+  const nv=p.nv||[];const c={b:nv.filter(n=>n.status==='booked').length,hd:nv.filter(n=>n.status==='hold').length,no:nv.filter(n=>n.status==='none').length};
+  const body=`<div class="row" style="justify-content:flex-end"><button class="btn sm" onclick="act.nvAdd()">＋新增</button></div>
+    ${nv.length?nv.map(n=>`<div class="card" style="margin:8px 0;padding:10px 12px;background:${n.status==='none'?'#FFF8EF':'#fff'}">
+      <div class="row"><b class="grow">${n.doc?h(n.doc):'<span class="pill y">醫師待確認</span>'}｜${h(n.task)}</b><span class="pill ${n.status==='booked'?'g':n.status==='hold'?'y':'r'}">${n.status==='booked'?'已約':n.status==='hold'?'暫不約・追蹤中':'尚未處理'}</span><button class="btn sm" title="刪除" onclick="act.del('nv','${n.id}')">刪</button></div>
+      ${!n.doc?`<select class="i" style="margin-top:6px" onchange="act.nvDoc('${n.id}',this.value)"><option value="">選擇醫師</option>${DOCTORS.map(d=>`<option>${d}</option>`).join('')}</select>`:''}
+      ${(n.dates||[]).map(d=>`<div class="row" style="margin-top:6px;font-size:14px"><span class="grow">${md(d.date)}（${WK[new Date(d.date+'T00:00:00').getDay()]}）${h(d.time||'')}</span><span class="pill ${d.status==='done'?'g':d.status==='noshow'?'r':''}">${d.status==='done'?'已完成':d.status==='noshow'?'未到':'已約'}</span>${d.status==='sched'?`<button class="btn sm" onclick="act.nvMark('${n.id}','${d.id}','done')">完成</button><button class="btn sm" onclick="act.nvMark('${n.id}','${d.id}','noshow')">未到</button>`:''}</div>`).join('')}
+      ${n.hold?`<p class="muted" style="margin:6px 0 0">暫不約：${h(n.hold.reason)}・追蹤日 ${md(n.hold.follow)}</p>`:''}
+      <div class="row" style="margin-top:8px"><input class="i" type="date" id="nd-${n.id}" style="width:160px"><input class="i" id="nt-${n.id}" placeholder="時間 14:30" style="width:110px"><button class="btn sm pri" onclick="act.nvBook('${n.id}')">登記預約</button><button class="btn sm" onclick="act.nvHold('${n.id}')">暫不約</button></div></div>`).join(''):'<p class="muted">還沒有預約項目，按「＋新增」。</p>'}`;
+  return secCard('sec-nv','預約排程',nv.length&&!c.no,`<span class="pill ${c.no?'r':'g'}">已約 ${c.b}・暫不約 ${c.hd}・未處理 ${c.no}</span>`,body);
+}
+function dcSection(p){
+  const sq=signedQ(p);const st=dcStat(p);const C=p.collect;
+  if(!C){
+    return secCard('sec-dc','資料收集',false,`<span class="pill y">已成交付訂・待安排資收</span>`,
+     `<p style="margin:0 0 8px">病人已簽名，請安排資料收集（拍照、口掃、CT 等）。病人如果要先離開，可以先填預計日期。</p>
+      <div class="row"><input class="i" type="date" id="cp-d" style="width:170px" value="${p.collectPlan||''}"><button class="btn sm" onclick="act.collectPlan()">儲存預計日期</button><button class="btn pri sm" onclick="act.collect()">登記資料收集</button></div>`,{style:'border-color:var(--orange)'});
+  }
+  const body=`<p class="muted" style="margin:0 0 6px">${md(C.date)} 資收${C.amount?'・NT$ '+money(C.amount):''}・${h(C.by||'')}</p>
+    <table class="items"><thead><tr><th>項目</th><th>已收集</th><th>已上傳</th></tr></thead><tbody>${DATA.map(id=>{const s2=(p.dc||{})[id]||{};return `<tr><td>${h(exName(id))}</td><td><input type="checkbox" ${s2.got?'checked':''} onchange="act.dc('${id}','got',this.checked)"></td><td><input type="checkbox" ${s2.up?'checked':''} onchange="act.dc('${id}','up',this.checked)"></td></tr>`}).join('')}</tbody></table>
+    ${C.cloud?`<p style="margin:10px 0 0"><span class="pill g">已上傳雲端</span> <span class="muted">${h(C.cloudBy||'')}・${h(C.cloudAt||'')}</span></p>`:`<button class="btn pri block" style="margin-top:10px" onclick="act.cloud()">確認資料已全部上傳雲端</button><p class="muted" style="margin:6px 0 0">確認後會通知醫師「待設計」，醫師才能回報設計結果。</p>`}`;
+  return secCard('sec-dc','資料收集',C.cloud,`<span class="pill ${C.cloud?'g':'y'}">${C.cloud?'已上傳雲端':'收集 '+st.got+'・上傳 '+st.up}</span>`,body);
+}
+function designSection(p){
+  const u=me();const canDoc=isDocUser()||u.role==='管理員';const ok=!!(p.collect&&p.collect.cloud);const D=p.design;
+  let body='';
+  if(D&&D.status==='done')body=`<p style="margin:0"><span class="pill g">已完成設計</span> ${h(D.by)}・${h(D.at)}・可以安排手術</p>`;
+  else if(D)body=`<p style="margin:0 0 6px"><span class="pill y">資料不足</span> ${h(D.by)}・${h(D.at)}</p><p style="margin:0">待補：${D.lack.items.map(exName).join('、')}｜原因：${h(D.lack.reason)}${D.lack.note?'（'+h(D.lack.note)+'）':''}<br>最好 ${md(D.lack.best)} 前、最晚 ${md(D.lack.last)}</p>
+     ${p.redo?`<p style="margin:8px 0 0"><span class="pill ${p.redo.status==='booked'?'g':'r'}">${p.redo.status==='booked'?'已約回診補件 '+md(p.redo.date):'病人無法回來：'+h(p.redo.reason)}</span>${p.redo.note?' '+h(p.redo.note):''}</p>`:`<div class="row" style="margin-top:8px"><input class="i" type="date" id="rd-date" style="width:160px"><button class="btn sm pri" onclick="act.redoBook()">已約回診補件</button><button class="btn sm" onclick="act.redoCannot()">病人無法回來</button></div>`}`;
+  else body=`<p class="muted" style="margin:0">${ok?'資料已上傳雲端，等待醫師設計。':'個管確認「資料已全部上傳雲端」之後，醫師才能回報。'}</p>`;
+  if(canDoc&&!(D&&D.status==='done'))body+=`<div class="row" style="margin-top:10px"><button class="btn sm pri" ${ok?'':'disabled'} onclick="act.designDone()">✅ 已完成設計，可安排手術</button><button class="btn sm" ${ok?'':'disabled'} onclick="act.designLack()">⚠ 資料收集不足</button></div>${ok?'':'<p class="muted" style="margin:4px 0 0">資料尚未上傳雲端，按鈕暫時不能按。</p>'}`;
+  return secCard('sec-design','醫師設計回報',D&&D.status==='done',`<span class="pill ${D?(D.status==='done'?'g':'y'):''}">${D?(D.status==='done'?'已完成設計':'資料不足'):(ok?'待設計':'等待資料')}</span>`,body);
+}
+function surgItems(p){const sq=signedQ(p);if(!sq)return [];return sq.items.filter(i=>i.pid&&!i.nhi&&!i.gift).map(i=>i.name+(i.teeth.length?' '+i.teeth.join('.'):''))}
+function surgSection(p){
+  const S_=p.surgery||{};const its=surgItems(p);const sel=S_.items||[];const ao=signedQ(p).items.some(i=>/ao4|allon/.test(i.pid||''));
+  const body=`${S_.date?`<p style="margin:0 0 8px"><b>${md(S_.date)}（${WK[new Date(S_.date+'T00:00:00').getDay()]}）${h(S_.time||'')}</b>｜${h(sel.join('、')||'項目待選')}｜麻醉：${h(S_.anes||'局部麻醉')}${S_.anesTime?' '+h(S_.anesTime):''}</p>`:''}
+    <label class="f">這次手術的項目（健保項目不用登記）</label><div class="row">${its.length?its.map(x=>`<label style="font-size:14px"><input type="checkbox" class="sg-it" value="${h(x)}" ${sel.includes(x)?'checked':''}> ${h(x)}</label>`).join(''):'<span class="muted">簽名版報價沒有自費項目</span>'}</div>
+    <div class="row" style="margin-top:8px"><input class="i" type="date" id="sg-date" style="width:160px" value="${S_.date||''}"><input class="i" id="sg-time" placeholder="手術時間 09:00" style="width:130px" value="${h(S_.time||'')}"></div>
+    <label class="f">麻醉（局部麻醉不用選）</label><div class="row"><select class="i grow" id="sg-anes"><option value="">局部麻醉</option>${['鎮靜舒眠','全身麻醉'].map(x=>`<option ${S_.anes===x?'selected':''}>${x}</option>`).join('')}</select><input class="i grow" id="sg-at" placeholder="麻醉時間（例如 08:30–11:30）" value="${h(S_.anesTime||'')}"><button class="btn sm pri" onclick="act.surgery()">儲存</button></div>
+    ${ao?'<p class="muted" style="margin:6px 0 0">All-on-4 的麻醉費已含在療程費用（單顎 2 小時、全口 4 小時），只有超時另計。</p>':''}
+    ${D_clear(p)}`;
+  return secCard('sec-surg','手術與麻醉',!!S_.date,`<span class="pill ${S_.date?'g':''}">${S_.date?md(S_.date)+' '+h(S_.time||''):'未排'}</span>`,body);
+}
+function D_clear(p){const has=!!p.xray||(p.photos||[]).length;if(!(p.design&&p.design.status==='done'&&p.surgery&&p.surgery.date&&has))return '';
+  return `<div class="card" style="margin:10px 0 0;background:var(--cream)"><b>設計完成、手術已排定</b><p class="muted" style="margin:2px 0 8px">可以移除這位病人的 Pano 和臨床照片，釋放手機空間。醫師端會顯示「療程中」。</p><button class="btn sm" onclick="act.del('photos','${p.id}')">移除照片釋放空間</button></div>`}
+function flowCards(p){
+  const sq=signedQ(p);let out='';
+  if(!p.xray&&!p.photosCleared){out+=`<div class="card" id="sec-pano" style="border-color:${p.panoNote?'var(--line)':'var(--bad)'}"><div class="row"><h2 class="grow" style="margin:0">${p.panoNote?'未拍 Pano：'+h(p.panoNote):'⚠ 尚未上傳 Pano'}</h2><button class="btn sm" onclick="tmp.x=undefined;go('editp',{pid:'${p.id}'})">上傳</button></div>
+    <label class="f">無法拍攝的原因</label><div class="row"><select class="i grow" id="pn-r"><option value="">選擇原因</option>${NOPANO.map(x=>`<option ${p.panoNote&&p.panoNote.startsWith(x)?'selected':''}>${x}</option>`).join('')}</select><input class="i grow" id="pn-n" placeholder="備註"><button class="btn sm" onclick="act.panoNote()">儲存</button></div></div>`}
+  if(sq||(p.nv||[]).length)out+=nvSection(p);
+  if(sq&&needsData(p)){out+=dcSection(p)+designSection(p)+surgSection(p)}
+  else if(sq&&(p.surgery||surgItems(p).length))out+=surgSection(p);
+  if(p.closed){const c=p.closed;out+=`<div class="card" style="border-color:var(--bad)"><h2>未成交結案</h2><p style="margin:0">原因：${h(c.reason)}・${h(c.at)}</p>${c.eval?`<p class="muted" style="margin:6px 0 0">自評表：${h(c.eval.main)}${c.eval.ours.length?'｜'+h(c.eval.ours.join('、')):''}${c.eval.traits.length?'｜病人特質：'+h(c.eval.traits.join('、')):''}</p>`:''}</div>`}
+  else if((p.track||[]).length||p.trackDue||(p.quotes.length&&['track','open'].includes(bucket(p)))){out+=`<div class="card" id="sec-track"><div class="row"><h2 class="grow" style="margin:0">追蹤紀錄</h2><button class="btn sm pri" onclick="act.trackOpen()">登記追蹤</button></div>
+    ${!(p.track||[]).length&&!p.trackDue?`<p class="muted" style="margin:6px 0">${bucket(p)==='track'?'報價已過期，請開始追蹤。':'報價期限內，有聯繫病人也可以先登記。'}</p>`:''}${p.trackDue?`<p class="muted" style="margin:6px 0">下次追蹤：${md(p.trackDue)}・${h(p.trackWhy||'')}</p>`:''}
+    ${(p.track||[]).map((x,i)=>`<div class="muted" style="font-size:13px">第 ${i+1} 次・${h(x.at)}・${h(x.method)}・${h(x.result)}${x.note?'・'+h(x.note):''}</div>`).join('')}</div>`}
+  return out;
+}
+/* ===== 刪除、備份、修改紀錄 ===== */
+const DEL_PW='2508';
+function dlBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+const dlJSON=(o,name)=>dlBlob(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}),name+'.json');
+function dlImgs(list,name){dlBlob(new Blob([`<!doctype html><meta charset="utf-8"><title>${h(name)}</title><body style="font-family:sans-serif;margin:16px"><h1>${h(name)}</h1><p>${today()} 備份</p>${list.map(x=>`<figure style="margin:0 0 16px"><img src="${x.src}" style="max-width:100%"><figcaption>${h(x.cap||'')}</figcaption></figure>`).join('')}</body>`],{type:'text/html'}),name+'.html')}
+function delInfo(kind,ref){
+  const p=V.pid?P(V.pid):null;
+  if(kind==='nv'){const n=p.nv.find(x=>x.id===ref);return {label:`${p.name}｜預約「${n.task}」`,trash:true,data:n,pid:p.id,run(){p.nv=p.nv.filter(x=>x.id!==ref);fixTrack(p)},backup(){dlJSON({病人:p.name,預約:n},`${p.name}_預約備份_${todayISO()}`)}}}
+  if(kind==='photo'){const x=p.photos.find(y=>y.id===ref);return {label:`${p.name}｜臨床照片 1 張`,trash:false,pid:p.id,run(){p.photos=p.photos.filter(y=>y.id!==ref)},backup(){dlImgs([{src:x.src,cap:p.name}],`${p.name}_照片備份_${todayISO()}`)}}}
+  if(kind==='photos'){const q=P(ref);const L=(q.xray?[{src:q.xray,cap:'Pano'}]:[]).concat((q.photos||[]).map(x=>({src:x.src,cap:'臨床照片'})));return {label:`${q.name}｜Pano 與臨床照片共 ${L.length} 張`,trash:false,pid:q.id,run(){q.xray=null;q.photos=[];q.photosCleared=today()},backup(){dlImgs(L,`${q.name}_照片備份_${todayISO()}`)}}}
+  if(kind==='patient'){const q=P(ref);return {label:`病人 ${q.name}（${q.chart||'無病歷號'}）整份資料`,trash:true,data:q,run(){S.patients=S.patients.filter(x=>x!==q);S.mkt=(S.mkt||[]).map(c=>c.pid===q.id?Object.assign(c,{pid:null}):c)},backup(){dlJSON(q,`${q.name}_病人資料備份_${todayISO()}`)},after(){tmp={};go('patients')}}}
+  if(kind==='mktVisit'){const c=S.mkt.find(x=>x.id===V.mid);const v=c.visits.find(x=>x.id===ref);return {label:`行銷 case ${c.name}｜回診 ${v.date}`,trash:true,data:v,mid:c.id,run(){c.visits=c.visits.filter(x=>x!==v)},backup(){dlJSON({行銷case:c.name,回診:v},`${c.name}_回診備份_${todayISO()}`)}}}
+  if(kind==='itemImg'){const it=priceOf(ref);const L=(S.itemImgs[ref]||[]);return {label:`價目表圖片：${it?it.name:ref}（${L.length} 張）`,trash:false,run(){delete S.itemImgs[ref]},backup(){dlImgs(L,`${it?it.name:ref}_圖片備份_${todayISO()}`)}}}
+  if(kind==='reset')return {label:'這支手機上的全部試用資料（帳號、病人、報價）',trash:false,run(){localStorage.removeItem(KEY);S=blank();tmp={}},backup(){dlJSON(S,`立威試用資料備份_${todayISO()}`)},after(){render()}};
+  return null;
+}
+function logP(p,t){p.log=p.log||[];p.log.unshift({at:new Date().toLocaleString('zh-TW',{hour12:false}),by:me()?me().name:'',t})}
+(function purgeTrash(){if(!S.trash)return;const lim=Date.now()-30*864e5;S.trash=S.trash.filter(x=>x.at>lim);S.delLog=(S.delLog||[]).filter(x=>x.at>Date.now()-90*864e5)})();
+function adminTodos(){
+  const u=me();if(u.role!=='管理員')return [];const t0=new Date();t0.setHours(0,0,0,0);
+  return (S.delLog||[]).filter(x=>x.at>=t0.getTime()).map(x=>({t:`${new Date(x.at).toTimeString().slice(0,5)} ${x.by} 刪除：${x.label}（${x.backup?'有備份':'沒有備份'}）`,c:x.backup?'y':'r',to:()=>go('settings')}));
 }
 
 /* ---- 標牙位 ---- */
@@ -1111,7 +1182,7 @@ function viewPlan(){
    <button class="btn sm" onclick="act.edit()">${q.signed?'開新版本修改':'編輯'}</button>
    <button class="btn sm" onclick="act.promo()">加入優惠方案</button>
    <label class="btn sm" for="pl-photo">上傳照片</label><input id="pl-photo" type="file" accept="image/*" multiple hidden onchange="act.addPhotos(this)">
-   <button class="btn sm" onclick="act.signOpen()" ${q.signed?'disabled':''}>病人簽名</button>
+   <button class="btn sm" onclick="act.signOpen()" ${q.signed?'disabled':''}>病人簽名</button><button class="btn sm" onclick="act.onlineSign()" ${q.signed?'disabled':''}>線上簽名</button>
    <button class="btn sm" onclick="window.print()">輸出 PDF</button>
    <button class="btn sm" onclick="act.png()">輸出 PNG</button>
    <button class="btn sm" onclick="document.body.classList.add('present');window.scrollTo(0,0)">平板展示</button></div>
@@ -1303,8 +1374,10 @@ function viewSettings(){
      <label class="f">付款節點</label><input class="i" id="ap-pay" placeholder="例如 資料收集 $5,000 → 手術日尾款繳清">
      <button class="btn pri block" style="margin-top:10px" onclick="act.addPrice()">加入價目表</button></div>`:''}
    <div class="tablewrap"><table class="items"><thead><tr><th>項目</th><th>分類</th><th>價格</th><th>醫囑寫法</th><th>計畫書圖片</th></tr></thead><tbody>
-   ${S.prices.map((x,k)=>`<tr><td>${h(x.name)}</td><td>${h(x.cat)}</td><td style="white-space:nowrap">${x.min!=null&&x.max!=null&&x.min!==x.max?money(x.min)+'–'+money(x.max):money(x.price)} / ${h(x.unit)}</td><td class="muted">${h(x.alias.join('、'))}</td><td style="white-space:nowrap"><label class="btn sm" for="ii-${x.id}">＋圖片</label><input id="ii-${x.id}" type="file" accept="image/*" hidden onchange="act.itemImg('${x.id}',this)">${((S.itemImgs||{})[x.id]||[]).length?` <span class="pill">${S.itemImgs[x.id].length} 張</span> <button class="btn sm" onclick="act.itemImgClear('${x.id}')">清除</button>`:''}</td></tr>`).join('')}</tbody></table></div></div>
-  <div class="card"><h2>試用資料</h2><p class="muted">清除這支手機上所有試用資料（帳號、病人、報價）。</p><button class="btn" onclick="act.reset()">清除全部試用資料</button></div>`;
+   ${S.prices.map((x,k)=>`<tr><td>${h(x.name)}</td><td>${h(x.cat)}</td><td style="white-space:nowrap">${x.min!=null&&x.max!=null&&x.min!==x.max?money(x.min)+'–'+money(x.max):money(x.price)} / ${h(x.unit)}</td><td class="muted">${h(x.alias.join('、'))}</td><td style="white-space:nowrap"><label class="btn sm" for="ii-${x.id}">＋圖片</label><input id="ii-${x.id}" type="file" accept="image/*" hidden onchange="act.itemImg('${x.id}',this)">${((S.itemImgs||{})[x.id]||[]).length?` <span class="pill">${S.itemImgs[x.id].length} 張</span> <button class="btn sm" onclick="act.del('itemImg','${x.id}')">清除</button>`:''}</td></tr>`).join('')}</tbody></table></div></div>
+  ${admin?`<div class="card"><h2>最近刪除（30 天內可復原）</h2>${(S.trash||[]).length?`<div class="list">${S.trash.map(t=>`<div class="it"><div class="grow"><b>${h(t.label)}</b><span class="muted">${new Date(t.at).toLocaleString('zh-TW',{hour12:false})}・${h(t.by)}</span></div><button class="btn sm" onclick="act.restore('${t.id}')">復原</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">沒有可復原的資料。</p>'}
+   ${(S.delLog||[]).length?`<details style="margin-top:10px"><summary class="muted">刪除紀錄（90 天）</summary>${S.delLog.map(x=>`<div class="muted" style="font-size:13px">${new Date(x.at).toLocaleString('zh-TW',{hour12:false})}・${h(x.by)}・${h(x.label)}・${x.backup?'有備份':'沒有備份'}</div>`).join('')}</details>`:''}</div>`:''}
+  <div class="card"><h2>試用資料</h2><p class="muted">清除這支手機上所有試用資料（帳號、病人、報價）。</p><button class="btn" onclick="act.del('reset')">清除全部試用資料</button></div>`;
 }
 
 /* ========= 動作 ========= */
@@ -1363,7 +1436,6 @@ const act={
   mktSet(k,v){const c=S.mkt.find(x=>x.id===V.mid);c[k]=v;save()},
   mktAuth(g,on){const c=S.mkt.find(x=>x.id===V.mid);c.auth=c.auth||[];if(on&&!c.auth.includes(g))c.auth.push(g);if(!on)c.auth=c.auth.filter(x=>x!==g);save()},
   mktVisit(){const d=document.getElementById('mv-date').value;if(!d)return toast('請選回診日');const c=S.mkt.find(x=>x.id===V.mid);c.visits=c.visits||[];c.visits.push({id:'v'+Date.now(),date:d,note:document.getElementById('mv-note').value.trim()});save();toast('已加入回診日');render()},
-  mktVisitDel(id){const c=S.mkt.find(x=>x.id===V.mid);c.visits=c.visits.filter(v=>v.id!==id);save();render()},
   clearAll(){modal(`<h2>確定清除全部牙位標記？</h2><p class="muted">32 顆的狀態和 X 光上的位置都會清空，從 18 號重新開始。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doClear()">確定清除</button></div>`)},
   doClear(){const p=P(V.pid);p.teeth={};p.stack=[];p.teethDone=false;tmp.sel=null;tmp.relocate=null;save();closeModal();toast('已清除，請從 18 號重新開始');render()},
   roster(inp){const f=inp.files[0];if(!f)return;if(!window.XLSX)return toast('讀取工具載入中，請稍後再試');
@@ -1391,11 +1463,9 @@ const act={
   nvHold(id){modal(`<h2>暫不約</h2><label class="f">原因</label><select class="i" id="nh-r">${HOLD_R.map(x=>`<option>${x}</option>`).join('')}</select><input class="i" id="nh-n" placeholder="備註" style="margin-top:6px"><label class="f">追蹤日期（預設 3 天後）</label><input class="i" type="date" id="nh-f" value="${addISO(todayISO(),3)}"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.nvHoldSave('${id}')">儲存</button></div>`)},
   nvHoldSave(id){const p=P(V.pid);const n=p.nv.find(x=>x.id===id);const r=document.getElementById('nh-r').value,no=document.getElementById('nh-n').value.trim();n.status='hold';n.hold={reason:r+(no?'（'+no+'）':''),follow:document.getElementById('nh-f').value||addISO(todayISO(),3)};fixTrack(p);save();closeModal();render()},
   nvMark(id,did,st){const p=P(V.pid);const n=p.nv.find(x=>x.id===id);const d=n.dates.find(x=>x.id===did);d.status=st;if(st==='noshow'){n.status='hold';n.hold={reason:md(d.date)+' 未到',follow:todayISO()}}fixTrack(p);save();render()},
-  collect(){const p=P(V.pid);const q=signedQ(p);const c=calc(p,q);modal(`<h2>登記資收</h2><label class="f">日期</label><input class="i" type="date" id="cl-d" value="${todayISO()}"><label class="f">金額</label><input class="i" type="number" id="cl-a" value="${q.depWaive?0:(c.dep||0)}"><p class="muted">登記後，今天就要把資料上傳完成。</p><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.collectSave()">登記</button></div>`)},
-  collectSave(){const p=P(V.pid);p.collect={date:document.getElementById('cl-d').value||todayISO(),amount:+document.getElementById('cl-a').value||0,by:me().name};save();closeModal();toast('已登記資收');render()},
   dc(id,k,v){const p=P(V.pid);p.dc=p.dc||{};p.dc[id]=p.dc[id]||{};p.dc[id][k]=v;if(k==='up'&&v)p.dc[id].got=true;save();render()},
-  designDone(){const p=P(V.pid);p.design={status:'done',by:me().name,at:today()};p.redo=null;save();toast('已回報：可安排手術');render()},
-  designLack(){const L=['intra','extra','face5d','ct','ioscan','ceph'];modal(`<h2>資料收集不足</h2><label class="f">需要重拍的項目</label><div class="row">${L.map(id=>`<label style="font-size:14px"><input type="checkbox" class="lk" value="${id}"> ${h(EXAMS.find(e=>e.id===id).name)}</label>`).join('')}</div>
+  designDone(){const p=P(V.pid);if(!(p.collect&&p.collect.cloud))return toast('資料還沒上傳雲端');logP(p,'醫師回報：已完成設計');p.design={status:'done',by:me().name,at:today()};p.redo=null;save();toast('已回報：可安排手術');render()},
+  designLack(){if(!(P(V.pid).collect&&P(V.pid).collect.cloud))return toast('資料還沒上傳雲端');const L=['intra','extra','face5d','ct','ioscan','ceph'];modal(`<h2>資料收集不足</h2><label class="f">需要重拍的項目</label><div class="row">${L.map(id=>`<label style="font-size:14px"><input type="checkbox" class="lk" value="${id}"> ${h(EXAMS.find(e=>e.id===id).name)}</label>`).join('')}</div>
    <label class="f">原因</label><select class="i" id="lk-r">${LACK_R.map(x=>`<option>${x}</option>`).join('')}</select><input class="i" id="lk-n" placeholder="備註" style="margin-top:6px">
    <div class="row"><div class="grow"><label class="f">最好在這天前</label><input class="i" type="date" id="lk-b" value="${addISO(todayISO(),3)}"></div><div class="grow"><label class="f">最晚</label><input class="i" type="date" id="lk-l" value="${addISO(todayISO(),7)}"></div></div>
    <div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.designLackSave()">送給個管</button></div>`)},
@@ -1403,7 +1473,7 @@ const act={
   redoBook(){const p=P(V.pid);const d=document.getElementById('rd-date').value;if(!d)return toast('請選擇回診日期');p.redo={status:'booked',date:d,by:me().name};save();toast('已回報醫師');render()},
   redoCannot(){modal(`<h2>病人無法回來補件</h2><label class="f">原因</label><select class="i" id="rc-r">${CANNOT_R.map(x=>`<option>${x}</option>`).join('')}</select><input class="i" id="rc-n" placeholder="備註" style="margin-top:6px"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.redoCannotSave()">回報醫師</button></div>`)},
   redoCannotSave(){const p=P(V.pid);p.redo={status:'cannot',reason:document.getElementById('rc-r').value,note:document.getElementById('rc-n').value.trim(),by:me().name};save();closeModal();render()},
-  surgery(){const p=P(V.pid);const d=document.getElementById('sg-date').value;if(!d)return toast('請選擇手術日期');p.surgery={date:d,time:document.getElementById('sg-time').value.trim(),anes:document.getElementById('sg-anes').value,anesTime:document.getElementById('sg-at').value.trim(),by:me().name};save();toast('已排手術，醫師看得到');render()},
+  surgery(){const p=P(V.pid);const d=document.getElementById('sg-date').value;if(!d)return toast('請選擇手術日期');const items=[...document.querySelectorAll('.sg-it:checked')].map(x=>x.value);p.surgery={date:d,time:document.getElementById('sg-time').value.trim(),items,anes:document.getElementById('sg-anes').value||'局部麻醉',anesTime:document.getElementById('sg-at').value.trim(),by:me().name};logP(p,'排手術 '+d+' '+p.surgery.time+'・'+(items.join('、')||'項目待選')+'・'+p.surgery.anes);save();toast('已排手術，醫師看得到');render()},
   trackOpen(){modal(`<h2>登記追蹤</h2><label class="f">方式</label><select class="i" id="tk-m"><option>電話</option><option>LINE</option><option>簡訊</option></select><label class="f">結果</label><select class="i" id="tk-r"><option>已聯繫・已約診</option><option>已聯繫・還在考慮</option><option>沒接或未讀</option></select><input class="i" id="tk-n" placeholder="病人怎麼說（備註）" style="margin-top:6px"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.trackSave()">儲存</button></div>`)},
   trackSave(){const p=P(V.pid);p.track=p.track||[];const r=document.getElementById('tk-r').value;p.track.push({at:today(),method:document.getElementById('tk-m').value,result:r,note:document.getElementById('tk-n').value.trim()});
     if(r.includes('已約診')){p.trackDue=null;closeModal();toast('請在預約排程登記日期');save();return render()}
@@ -1418,6 +1488,39 @@ const act={
    <div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">稍後</button><button class="btn pri grow" onclick="act.closeSave()">結案</button></div>`)},
   closeSave(){const p=P(V.pid);const main=(document.querySelector('input[name=ev-m]:checked')||{}).value||'兩者都有';const pf=main==='病人個人因素';const n=document.getElementById('cs-n').value.trim();
     p.closed={reason:document.getElementById('cs-r').value+(n?'（'+n+'）':''),at:today(),by:me().name,eval:{main,ours:pf?[]:[...document.querySelectorAll('.ev-o:checked')].map(x=>x.value),traits:[...document.querySelectorAll('.ev-t:checked')].map(x=>x.value),next:pf?'':document.getElementById('ev-next').value.trim(),by:me().name}};p.trackDue=null;save();closeModal();toast('已結案');render()},
+  collect(){const p=P(V.pid);const q=signedQ(p);const c=calc(p,q);modal(`<h2>登記資料收集</h2><label class="f">日期</label><input class="i" type="date" id="cl-d" value="${todayISO()}">
+   <label class="f">這次收集了哪些</label><div class="row">${DATA.map(id=>`<label style="font-size:14px"><input type="checkbox" class="cl-x" value="${id}" ${(p.dc&&p.dc[id]&&p.dc[id].got)||dcList(p).includes(id)?'checked':''}> ${h(exName(id))}</label>`).join('')}</div>
+   <label style="display:block;margin-top:10px;font-size:15px"><input type="checkbox" id="cl-up"> 已全部上傳雲端</label>
+   <label class="f">資料收集費（選填）</label><input class="i" type="number" id="cl-a" value="${q.depWaive?0:(c.dep||'')}" placeholder="例如 3000">
+   <p class="muted">今天就要把資料上傳雲端，下班前會再提醒。</p><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.collectSave()">登記</button></div>`)},
+  collectSave(){const p=P(V.pid);const xs=[...document.querySelectorAll('.cl-x:checked')].map(x=>x.value);if(!xs.length)return toast('請勾選收集了哪些資料');
+    p.dc=p.dc||{};for(const id of xs)p.dc[id]=Object.assign(p.dc[id]||{},{got:true});
+    p.collect={date:document.getElementById('cl-d').value||todayISO(),amount:+document.getElementById('cl-a').value||0,by:me().name};p.collectPlan=null;
+    if(document.getElementById('cl-up').checked){for(const id of xs)p.dc[id].up=true;Object.assign(p.collect,{cloud:true,cloudAt:today(),cloudBy:me().name})}
+    logP(p,'登記資料收集：'+xs.map(exName).join('、')+(p.collect.cloud?'（已上傳雲端）':''));save();closeModal();toast(p.collect.cloud?'已登記，醫師會看到「待設計」':'已登記，記得今天上傳雲端');render()},
+  collectPlan(){const p=P(V.pid);const d=document.getElementById('cp-d').value;if(!d)return toast('請選擇日期');p.collectPlan=d;logP(p,'預計資收 '+d);save();toast('已記錄預計日期');render()},
+  cloud(){const p=P(V.pid);const st=dcStat(p);if(!st.got)return toast('請先勾選已收集的項目');for(const id of DATA)if(p.dc[id]&&p.dc[id].got)p.dc[id].up=true;Object.assign(p.collect,{cloud:true,cloudAt:today(),cloudBy:me().name});logP(p,'確認資料已上傳雲端');save();toast('已通知醫師待設計');render()},
+  afterSign(){const p=P(V.pid);modal(`<h2>簽名完成 🎉</h2><p>下一步要約下次治療時間。</p><div style="display:flex;flex-direction:column;gap:8px"><button class="btn pri block" onclick="closeModal();go('patient',{pid:'${p.id}'});setTimeout(()=>${scrollTo_('sec-nv').replace(/"/g,'&quot;')},50)">現在登記預約</button><button class="btn block" onclick="act.signLater()">病人先離開，稍後聯絡確認時間</button></div><p class="muted">約今天的會直接進入「療程中」；沒約的會列入待追蹤。</p>`)},
+  signLater(){const p=P(V.pid);p.trackDue=addISO(todayISO(),1);p.trackWhy='已成交，聯絡確認預約時間';logP(p,'簽名後病人先離開，待聯絡預約');save();closeModal();toast('已列入明天追蹤');go('patient',{pid:p.id})},
+  onlineSign(){modal(`<h2>線上簽名</h2><p class="muted" style="margin-top:0">正式版功能（試用版先示範畫面）</p>
+   <div class="card" style="background:var(--cream)"><p style="margin:0 0 6px">正式版會傳一個專屬連結給病人：</p><ul class="pay"><li>病人輸入<b>生日末三碼</b>才能打開</li><li>只能看和簽名，不能下載、列印、複製</li><li>畫面有病人姓名和時間的浮水印</li><li>簽完連結自動失效，系統記錄簽名時間與版本</li></ul></div>
+   <label class="f">病人看到的畫面</label><div class="card" style="text-align:center"><b>立威口腔顎面外科</b><p class="muted" style="margin:4px 0">請輸入您的生日末三碼</p><input class="i" style="max-width:140px;text-align:center;letter-spacing:.4em" maxlength="3" inputmode="numeric" placeholder="○○○"><p class="muted" style="font-size:11px;margin:6px 0 0">例如生日 0801，請輸入 801</p></div>
+   <div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" disabled>傳送連結（正式版開放）</button></div>`)},
+  del(kind,ref){const D=delInfo(kind,ref);if(!D)return;modal(`<h2>刪除前確認</h2><p style="margin:0 0 8px"><b>${h(D.label)}</b></p>
+   <label style="display:block;padding:8px 0;font-size:15px"><input type="radio" name="dk" value="keep" checked> 需要保留 → <b>先下載備份</b>再刪除</label>
+   <label style="display:block;padding:8px 0;font-size:15px"><input type="radio" name="dk" value="no"> 不需保留（例如打錯）→ 直接刪除</label>
+   ${D.trash?'<p class="muted" style="margin:0">刪除後會放在「最近刪除」30 天，管理員可以復原。</p>':'<p class="muted" style="margin:0;color:var(--bad)">這項刪除後無法復原。</p>'}
+   <label class="f">刪除密碼</label><input class="i" type="password" id="dk-pw" inputmode="numeric" autocomplete="off">
+   <div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="act.doDel('${kind}','${ref||''}')">確定刪除</button></div>`)},
+  doDel(kind,ref){if(document.getElementById('dk-pw').value!==DEL_PW)return toast('密碼不正確');const keep=(document.querySelector('input[name=dk]:checked')||{}).value==='keep';const D=delInfo(kind,ref);
+    try{if(keep)D.backup()}catch(e){return toast('備份失敗，沒有刪除')}
+    const who=me()?me().name:'';if(D.trash){S.trash=S.trash||[];S.trash.unshift({id:'t'+Date.now(),at:Date.now(),by:who,label:D.label,kind,data:JSON.parse(JSON.stringify(D.data)),pid:D.pid||null,mid:D.mid||null})}
+    D.run();if(kind!=='reset'){S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:who,label:D.label,backup:keep});if(D.pid&&P(D.pid))logP(P(D.pid),'刪除：'+D.label)}
+    save();closeModal();toast(keep?'已下載備份並刪除':'已刪除');if(D.after)D.after();else render()},
+  restore(id){modal(`<h2>復原</h2><p>${h((S.trash.find(x=>x.id===id)||{}).label||'')}</p><label class="f">刪除密碼</label><input class="i" type="password" id="rs-pw" inputmode="numeric"><div class="row" style="margin-top:12px"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.doRestore('${id}')">復原</button></div>`)},
+  doRestore(id){if(document.getElementById('rs-pw').value!==DEL_PW)return toast('密碼不正確');const t=S.trash.find(x=>x.id===id);if(!t)return;
+    if(t.kind==='patient')S.patients.unshift(t.data);else if(t.kind==='nv'){const p=P(t.pid);if(!p)return toast('病人已不存在');p.nv=p.nv||[];p.nv.push(t.data);fixTrack(p)}else if(t.kind==='mktVisit'){const c=(S.mkt||[]).find(x=>x.id===t.mid);if(!c)return toast('行銷 case 已不存在');c.visits.push(t.data)}
+    S.trash=S.trash.filter(x=>x!==t);S.delLog=S.delLog||[];S.delLog.unshift({at:Date.now(),by:me().name,label:'復原：'+t.label,backup:true});save();closeModal();toast('已復原');render()},
   newQuote(pid){tmp.q2=null;tmp.editV=null;tmp.promo=false;go('orders',{pid})},
   parse(){
     const text=document.getElementById('ord').value;if(!text.trim())return toast('請先貼上醫囑');
@@ -1427,7 +1530,7 @@ const act={
     tmp.q2={orders:text,items:r.items,bad:r.bad,notes:r.notes,doctor:old?old.doctor:(p0.doctor||''),date:old?old.date:today(),rate,sed:old?old.sed:{type:'none',hours:2,count:1},disc:rate?(rate===0.95?'95':rate===0.9?'90':'rate'):(old?old.disc:'none'),discAmt:old?old.discAmt:'',gifts:old?old.gifts:[],mkt:old?old.mkt:'none',mktAmt:old?old.mktAmt:'',auth:old?old.auth:[],validDays:old?old.validDays:7};
     for(const i of tmp.q2.items)if(i.pid==='ems'&&!i.gift){i.gift=true;i.price=0;i.orig=0}
     for(const i of tmp.q2.items)if(i.pid==='fluor'&&fluorNHI(p0)){i.nhi=true;i.price=0;i.orig=0;i.list=0;i.name='全口塗氟（健保）'}
-    tmp.q2.nv=parseNV(sp.nv);tmp.q2.exams=autoExams(tmp.q2,sp.main);tmp.q2.depWaive=old?!!old.depWaive:false;
+    tmp.q2.nv=parseNV(sp.nv);if(old&&old.nv)for(const n of tmp.q2.nv){const o=old.nv.find(x=>x.raw===n.raw||x.task===n.task);if(o&&o.doc&&!n.doc)n.doc=o.doc}tmp.q2.exams=autoExams(tmp.q2,sp.main);tmp.q2.depWaive=old?!!old.depWaive:false;
     if(!old||old.sed.type==='none'){const ao=/ao4|all-?on-?4/i.test(text);
       if(/全麻|全身麻醉/.test(text))tmp.q2.sed.type=ao?'ao4ga':'ga';else if(/tci|舒眠|鎮靜/i.test(text))tmp.q2.sed.type=ao?'ao4seda':'seda';}
     render();
@@ -1469,11 +1572,10 @@ const act={
   addPhotos(inp){const p=P(V.pid);const fs=[...inp.files];if(!fs.length)return;p.photos=p.photos||[];
     Promise.all(fs.map(f=>compress(f,1400,0.8))).then(ds=>{for(const d of ds)p.photos.push({id:'ph'+Date.now()+Math.random().toString(36).slice(2,6),src:d,use:true});save();toast('已加入 '+ds.length+' 張照片');render()}).catch(()=>toast('照片讀取失敗'))},
   photoUse(id,on){const p=P(V.pid);const x=p.photos.find(y=>y.id===id);x.use=on;save()},
-  photoDel(id){const p=P(V.pid);p.photos=p.photos.filter(y=>y.id!==id);save();render()},
   signOpen(){modal(`<h2>病人簽名</h2><p class="muted">請病人在下方框內簽名。</p><canvas class="pad" id="pad"></canvas>
    <div class="row" style="margin-top:12px"><button class="btn" onclick="act.signClear()">清除</button><button class="btn grow" onclick="closeModal()">取消</button><button class="btn pri grow" onclick="act.signSave()">完成簽名</button></div>`);setupPad()},
   signClear(){const c=document.getElementById('pad');c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.ink=''},
-  signSave(){const c=document.getElementById('pad');if(!c.dataset.ink)return toast('請先簽名');const p=P(V.pid);const q=quoteOf(p,V.v);q.sign=c.toDataURL('image/png');q.signed=true;q.signedAt=today();q.log.push(`${today()} 病人完成簽名，此版本已鎖定`);p.nv=p.nv||[];for(const n of (q.nv||[]))if(!p.nv.some(x=>x.task===n.task&&x.doc===n.doc))p.nv.push(JSON.parse(JSON.stringify(n)));save();closeModal();toast('簽名完成，此版本已鎖定');render()},
+  signSave(){const c=document.getElementById('pad');if(!c.dataset.ink)return toast('請先簽名');const p=P(V.pid);const q=quoteOf(p,V.v);q.sign=c.toDataURL('image/png');q.signed=true;q.signedAt=today();q.log.push(`${today()} 病人完成簽名，此版本已鎖定`);p.nv=p.nv||[];for(const n of (q.nv||[]))if(!p.nv.some(x=>x.task===n.task&&x.doc===n.doc))p.nv.push(JSON.parse(JSON.stringify(n)));if(!p.nv.length)p.nv.push({id:'n'+Date.now(),doc:q.doctor||p.doctor||'',task:'下次治療',status:'none',dates:[],hold:null});logP(p,'第 '+q.v+' 版病人簽名');save();closeModal();toast('簽名完成，此版本已鎖定');render();act.afterSign()},
   png(){
     if(!window.html2canvas)return toast('圖片工具載入中，請稍後再試');
     toast('產生圖片中…');
@@ -1484,7 +1586,6 @@ const act={
     }).catch(()=>{document.body.classList.remove('exporting');toast('圖片產生失敗，請改用 PDF')});
   },
   itemImg(pid,inp){const f=inp.files[0];if(!f)return;const it=priceOf(pid);compress(f,1000,0.8).then(d=>{S.itemImgs[pid]=S.itemImgs[pid]||[];S.itemImgs[pid].push({src:d,cap:it?it.name:''});save();toast('已加入圖片，出現此療程時會放進計畫書');render()})},
-  itemImgClear(pid){delete S.itemImgs[pid];save();render()},
   lostReport(k){const txt=`${BK[k].t}名單（${today()}）\n\n`+lostText(tmp.rl||[]);modal(`<h2>${BK[k].t}文字報表</h2><textarea class="i" id="lr-t" style="min-height:300px">${h(txt)}</textarea><div class="row" style="margin-top:10px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="const t=document.getElementById('lr-t');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})">複製</button></div>`)},
   link(acc,v){const u=S.users.find(x=>x.acc===acc);u.link=v||undefined;save();toast('已設定 '+u.name+' 對應 '+(v||'本人姓名'));render()},
   role(acc,r){const u=S.users.find(x=>x.acc===acc);u.role=r;save();toast('已更新 '+u.name+' 的角色')},
@@ -1492,7 +1593,6 @@ const act={
     const min=g('ap-min')===''?null:+g('ap-min'),max=g('ap-max')===''?min:+g('ap-max');
     S.prices.push({id:'c'+Date.now(),name,cat:g('ap-cat'),unit:g('ap-unit'),price:min,min,max,alias:[name,...g('ap-alias').split(/[,，、]/).map(s=>s.trim()).filter(Boolean)],pay:g('ap-pay')});
     tmp.addP=false;save();toast('已加入價目表');render()},
-  reset(){modal(`<h2>清除全部試用資料？</h2><p class="muted">帳號、病人、報價都會刪除，無法復原。</p><div class="row"><button class="btn grow" onclick="closeModal()">取消</button><button class="btn deep grow" onclick="localStorage.removeItem(KEY);S=blank();tmp={};closeModal();render()">確定清除</button></div>`)}
 };
 function modal(html){closeModal();const m=document.createElement('div');m.className='modal';m.id='modal';m.innerHTML=`<div class="sheetbox">${html}</div>`;m.onclick=e=>{if(e.target===m)closeModal()};document.body.appendChild(m)}
 function closeModal(){const m=document.getElementById('modal');if(m)m.remove()}
