@@ -111,6 +111,16 @@ textarea.i{min-height:150px}
 .tablewrap{overflow-x:auto}
 /* versions */
 .mcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}.mc{all:unset;cursor:pointer;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}.mc img,.mc-ph{width:100%;aspect-ratio:2/1;object-fit:cover;background:#222;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:14px}.mc-t{padding:8px 10px 2px;font-size:14px}.mc-s{padding:0 10px 10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.tile{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px}
+.tile b{font-family:var(--display);font-size:15px}.tile .n{font-size:28px;font-weight:700;line-height:1.1;color:var(--ink)}
+.tile.y .n{color:#8A6200}.tile.r .n{color:var(--bad)}.tile.g .n{color:var(--good)}
+.tile.on{border-color:var(--deep);background:var(--cream)}
+.sec-t{font-size:12px;color:var(--muted);letter-spacing:.12em;margin:6px 0 6px}
+.side .cnt{margin-left:auto;margin-right:6px;background:var(--deep);color:#fff;border-radius:99px;font-size:11px;padding:0 7px;font-weight:700;line-height:18px}
+.pinfo{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:8px 0 0;font-size:15px}.pinfo dt{color:var(--muted);font-size:13px;padding-top:2px}.pinfo dd{margin:0}
+.next-btn{margin:0 0 14px;font-size:16px;padding:13px}.next-btn.wait{background:var(--cream);border-radius:10px;text-align:center;color:var(--muted);font-size:14px;padding:10px}
+select.mini{border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff;max-width:120px}
 .vers{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .ver{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--cream);text-align:left}
 .ver b{display:block;font-family:var(--display)}
@@ -208,7 +218,7 @@ const KEY='lw-case-demo-v1';
 const REG_CODE='2508';
 const DOCTORS=['林涵威','周厚江','唐宗凡','簡志忠','邵獻慶','謝欣婷','黃振邦','蔡世軒','蕭至勛','尹姵今','陳德星','華芳瑩','黃宣諭','林正忠','吳哲勛','趙子毅','林涵宇','許彤年'];
 const CONSULT=['儒瑩','妏玲','暐涵','苡薇','陳芸','鎧甄'];
-const ROLES=['管理員','個管主管','諮詢師','醫師','臨床'];
+const ROLES=['管理員','院長','個管主管','諮詢師','醫師','臨床'];
 const UPPER=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
 const LOWER=[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
 const ORDER=UPPER.concat(LOWER);
@@ -295,7 +305,7 @@ const DEFAULT_PRICES=[
  {id:'ortho',name:'成人矯正（待選款式）',cat:'成人矯正',unit:'次',price:120000,min:120000,max:270000,alias:['成人矯正','矯正'],dep:3000,pay:'資料收集 $3,000（可抵矯正費）'},
  {id:'tmj',name:'顳顎關節治療',cat:'TMJ',unit:'次',price:null,min:null,max:null,alias:['tmj','顳顎'],pay:''}
 ];
-const APP_VER='10/08 10:00';
+const APP_VER='10/08 12:30';
 const SURG=['imp','auto','bba','graft','sinus','ao4','allon6','zygoma','gtr','cl','ctg','fgg','gingiva','wisdom','orthog','alveo','cyst','apico','ext','fren','id','flap'];
 const FRONT_ITEMS=['imp','bridge','crown','veneer','onlay','resin','bleach','gingiva','tempcr'];
 const EXAMS=[
@@ -363,16 +373,18 @@ function render(){
   if(!S.me||!me()){document.body.classList.remove('authed');app.innerHTML=viewLogin();return}
   document.body.classList.add('authed');document.body.classList.remove('menu');
   const u=me();
-  const views={home:viewHome,patients:viewPatients,newp:viewNewPatient,editp:viewNewPatient,patient:viewPatient,mark:viewMark,orders:viewOrders,plan:viewPlan,settings:viewSettings,mgrs:()=>viewPeople('mgr'),cons:()=>viewPeople('consult'),handoff:viewHandoff,reports:viewReports,roster:viewRoster,mkt:viewMkt,mycase:viewMyCase};
+  const views={home:viewHome,patients:viewPatients,newp:viewNewPatient,editp:viewNewPatient,patient:viewPatient,mark:viewMark,orders:viewOrders,plan:viewPlan,settings:viewSettings,mgrs:()=>viewPeople('mgr'),cons:()=>viewPeople('consult'),handoff:viewHandoff,reports:viewReports,roster:viewRoster,mkt:viewMkt,mycase:viewMyCase,docs:()=>viewDocCase('',false)};
   const body=(views[V.name]||viewHome)();
-  const sec={patient:'patients',newp:'patients',editp:'patients',mark:'patients',orders:'patients',plan:'patients'};
+  const sec={newp:'patients',editp:'patients',mark:'patients',orders:'patients',plan:'patients'};
   const cur=sec[V.name]||V.name;
-  const boss=['管理員','個管主管'].includes(u.role);
-  const item=(k,label,tag)=>`<button class="${cur===k?'on':''}" onclick="go('${k}')">${label}${tag?`<span class="tag">${tag}</span>`:''}</button>`;
+  const r=u.role,clinic=r==='臨床',boss=BOSS.includes(r);const nAct=clinic||boss?0:myTodos().length;
+  const item=(k,label,tag,cnt)=>`<button class="${cur===k?'on':''}" onclick="go('${k}')">${label}${cnt?`<span class="cnt">${cnt}</span>`:''}${tag?`<span class="tag">${tag}</span>`:''}</button>`;
   app.innerHTML=`
   <aside class="side"><div class="brand"><div class="mark">立</div><b>立威個案管理</b></div>
-   ${item('home','今日待辦')}${item('patients','患者查詢')}${u.role!=='臨床'?item('mycase',u.role==='醫師'?'我的 case':'醫師 case'):''}${item('mgrs','個案管理')}${item('cons','諮詢師')}${item('mkt','行銷 case')}${item('handoff','待交接','第二階段')}${boss?item('reports','報表','第二階段'):''}
-   <div class="sec">設定</div>${item('roster','上傳班表')}${item('settings','設定')}<p class="muted" style="padding:14px 12px 0;margin:0;font-size:11px">版本：${APP_VER}</p></aside>
+   ${item('home','今日待辦')}${item('patients','患者查詢')}${!clinic&&(['醫師','諮詢師','個管主管'].includes(r)||(r==='院長'&&isDocUser()))?item('mycase','我的 case','',nAct):''}
+   ${boss?`<div class="sec">管理</div>${item('cons','諮詢管理')}${item('mgrs','個案管理')}${item('docs','醫師 case')}${item('reports','報表')}`:''}
+   ${clinic?'':`<div class="sec">其他</div>${item('mkt','行銷 case')}${item('handoff','待交接','第二階段')}${item('roster','上傳班表')}`}
+   <div class="sec">設定</div>${item('settings','設定')}<p class="muted" style="padding:14px 12px 0;margin:0;font-size:11px">版本：${APP_VER}</p></aside>
   <div class="scrim" onclick="document.body.classList.remove('menu')"></div>
   <div class="demo">試用版・資料只存在這支手機的瀏覽器・請勿輸入真實病人資料</div>
   <header class="top"><button class="hamb" aria-label="選單" onclick="document.body.classList.add('menu')">☰</button><b>立威個案管理</b>
@@ -404,20 +416,6 @@ function viewLogin(){
 }
 
 /* ---- 首頁 ---- */
-function todo(){
-  const out=[];
-  for(const p of S.patients){
-    const q=p.quotes.at(-1);
-    if(!p.teethDone)out.push({p,t:'待標牙位',c:'y',to:()=>go('mark',{pid:p.id})});
-    else if(!q)out.push({p,t:'待貼醫囑',c:'y',to:()=>go('orders',{pid:p.id})});
-    else if(!q.signed){
-      const left=q.validDays-Math.floor((Date.now()-q.ts)/864e5);
-      if(left<=1)out.push({p,t:left<0?'報價已過期，需重新評估':'報價明天到期，要追蹤',c:'r',to:()=>go('plan',{pid:p.id,v:q.v})});
-      else out.push({p,t:'待簽名（還有 '+left+' 天）',c:'g',to:()=>go('plan',{pid:p.id,v:q.v})});
-    }
-  }
-  return out.concat(flowTodos());
-}
 const DOCMAP={'威':'林涵威','周':'周厚江','唐':'唐宗凡','簡':'簡志忠','邵':'邵獻慶','婷':'謝欣婷','黃':'黃振邦','蔡':'蔡世軒','勛':'蕭至勛','尹':'尹姵今','星':'陳德星','華':'華芳瑩','宣':'黃宣諭','忠':'林正忠','吳':'吳哲勛','趙':'趙子毅','許':'許彤年'};
 const FRONT_PRI=['儒瑩','苡薇','暐涵'];
 function rosterToday(off=0){
@@ -464,30 +462,11 @@ function rosterTodos(){
   if(d.getDate()===last)out.push({t:'今天是月底，請上傳下個月班表',c:'y',to:()=>go('roster')});
   return out;
 }
-function viewHome(){
-  const td=todo();tmp.todo=td;const rt=rosterTodos().concat(mktTodos());tmp.rt=rt;
-  return `<h1>今日待辦</h1>
-  ${shootCard()}${mktHomeCard()}${dutyCard()}
-  ${rt.length?`<div class="card list">${rt.map((x,i)=>`<div class="it" ${x.to?`onclick="tmp.rt[${i}].to()"`:''}><div class="grow"><b>${h(x.t)}</b></div><span class="pill ${x.c}">提醒</span></div>`).join('')}</div>`:''}
-  <div class="card"><div class="row"><h2 class="grow" style="margin:0">待處理個案</h2><button class="btn pri sm" onclick="go('newp')">＋新增病人</button></div>
-   <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${h(x.p.name)}</b><span class="muted">${h(x.p.chart||'病歷號待補')}・${x.p.doctor?h(x.p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${x.c}">${h(x.t)}</span></div>`).join(''):'<p class="muted">目前沒有待辦。按「＋新增病人」開始試用。</p>'}</div></div>`;
-}
-function viewPeople(key){
-  const title=key==='mgr'?'個案管理':'諮詢師';const who=V.who;
-  if(!who){
-    return `<h1>${title}</h1><div class="card list">${CONSULT.map(n=>{const c=S.patients.filter(p=>p[key]===n).length;return `<div class="it" onclick="go('${key==='mgr'?'mgrs':'cons'}',{who:'${n}'})"><div class="grow"><b>${h(n)}</b><span class="muted">${key==='mgr'?'負責':'經手'} ${c} 位病人</span></div><span class="pill">${c}</span></div>`}).join('')}
-     ${(()=>{const c=S.patients.filter(p=>!p[key]).length;return c?`<div class="it" onclick="go('${key==='mgr'?'mgrs':'cons'}',{who:'__none'})"><div class="grow"><b>尚未指定</b><span class="muted">${c} 位病人</span></div><span class="pill y">${c}</span></div>`:''})()}</div>`;
-  }
-  const list=S.patients.filter(p=>who==='__none'?!p[key]:p[key]===who);
-  return `<div class="row"><button class="btn sm" onclick="go('${key==='mgr'?'mgrs':'cons'}')">← ${title}</button></div>
-   <h1 style="margin-top:12px">${who==='__none'?'尚未指定':h(who)}</h1>
-   <div class="card list">${list.length?list.map(p=>{const s2=stageOf(p);return `<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.name)}</b><span class="muted">${h(p.chart||'病歷號待補')}・${p.doctor?h(p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${s2[1]}">${h(s2[0])}</span></div>`}).join(''):'<p class="muted">目前沒有個案。</p>'}</div>`;
-}
 function viewHandoff(){return `<h1>待交接</h1><div class="card"><p style="margin:0">第二階段功能：成交後的交接表會在這裡，可以分次填寫、隨時存檔，並顯示填寫進度。</p><p class="muted">追蹤紀錄、成交／未成交結案、交接表會在下一版加入。</p></div>`}
 function viewReports(){
   const n=S.patients.length,q=S.patients.filter(p=>p.quotes.length).length,sg=S.patients.filter(p=>p.quotes.some(x=>x.signed)).length;
   return `<h1>報表</h1><div class="card"><h2>目前試用資料</h2><dl class="duty"><dt>病人數</dt><dd>${n}</dd><dt>已出報價</dt><dd>${q}</dd><dt>已簽名</dt><dd>${sg}</dd></dl></div>
-  <div class="card"><p style="margin:0">第二階段功能：諮詢會、行銷會、主管會、院會的報表（成交率、未成交原因、患者來源、NP 數等）會在這裡自動產生。</p></div>${me().role==='管理員'?evalReport():''}`;
+  <div class="card"><p style="margin:0">第二階段功能：諮詢會、行銷會、主管會、院會的報表（成交率、未成交原因、患者來源、NP 數等）會在這裡自動產生。</p></div>${['管理員','院長'].includes(me().role)?evalReport():''}`;
 }
 function viewRoster(){
   const m=new Date().getMonth()+1;const R=S.roster;
@@ -629,10 +608,10 @@ function viewMktOne(){
 function stageOf(p){const q=p.quotes.at(-1);if(!p.teethDone)return['待標牙位','y'];if(!q)return['待貼醫囑','y'];if(q.signed)return['第 '+q.v+' 版已簽名','g'];return['第 '+q.v+' 版待簽名',''];}
 function viewPatients(){
   const k=(tmp.q||'').trim();
-  const list=S.patients.filter(p=>!k||p.name.includes(k)||p.chart.includes(k));
+  const list=S.patients.filter(p=>!k||p.name.includes(k)||String(p.chart||'').includes(k));
   return `<h1>患者查詢</h1>
   <div class="row" style="margin-bottom:12px"><input class="i grow" id="q" placeholder="搜尋姓名或病歷號" value="${h(k)}" oninput="tmp.q=this.value;render();setTimeout(()=>{const e=document.getElementById('q');e.focus();e.setSelectionRange(e.value.length,e.value.length)})"><button class="btn pri" onclick="go('newp')">＋新增</button></div>
-  <div class="card list">${list.length?list.map(p=>{const s=stageOf(p);return `<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.name)}</b><span class="muted">${h(p.chart||'病歷號待補')}・${p.doctor?h(p.doctor)+' 醫師':'醫師待補'}・諮詢 ${h(p.consult||'待補')}</span></div><span class="pill ${s[1]}">${h(s[0])}</span></div>`}).join(''):'<p class="muted">沒有符合的病人。</p>'}</div>`;
+  <div class="card list">${list.length?list.map(p=>{return patRow(p)}).join(''):'<p class="muted">沒有符合的病人。</p>'}</div>`;
 }
 function viewNewPatient(){
   const p=V.name==='editp'?P(V.pid):null;
@@ -662,11 +641,11 @@ function viewPatient(){
   const p=P(V.pid);if(!p)return '<p>找不到病人</p>';
   const age=ageOf(p.chart);
   const d=s=>h(s||'待補');
-  const cm=p.consult&&p.consult===p.mgr?`諮詢師／個管師：${d(p.consult)}`:`諮詢師：${d(p.consult)}・個管師：${d(p.mgr)}`;
-  return `<div class="row"><button class="btn sm" onclick="go('patients')">← 患者</button><span class="grow"></span><button class="btn sm" onclick="tmp.x=undefined;go('editp',{pid:'${p.id}'})">編輯資料</button></div>
+    return `<div class="row"><button class="btn sm" onclick="go('patients')">← 患者</button><span class="grow"></span><button class="btn sm" onclick="tmp.x=undefined;go('editp',{pid:'${p.id}'})">編輯資料</button></div>
   <h1 style="margin-top:12px">${h(p.name)}</h1>
   <div class="card"><div class="muted">病歷號 ${d(p.chart)}${age!=null?'・'+age+' 歲'+(age<=12?'（兒童）':''):''}・職業 ${d(p.job)}・地區 ${d(p.area)}</div>
-  <div style="margin-top:4px">主治醫師：${d(p.doctor)}・${cm}・來源：${d(p.src)}</div></div>
+  <dl class="pinfo"><dt>主治醫師</dt><dd>${d(p.doctor)}</dd><dt>諮詢師</dt><dd>${d(p.consult)}</dd><dt>個管師</dt><dd>${d(p.mgr)}</dd><dt>來源</dt><dd>${d(p.src)}${p.mktNote?'・'+h(p.mktNote):''}</dd><dt>目前狀態</dt><dd><span class="pill ${caseLabel(p)[1]}">${h(caseLabel(p)[0])}</span></dd></dl></div>
+  ${nextBtn(p)}
   <div class="card"><div class="row"><h2 class="grow" style="margin:0">牙位</h2><span class="pill ${p.teethDone?'g':'y'}">${p.teethDone?'已確認':'未完成'}</span><button class="btn sm" onclick="go('mark',{pid:'${p.id}'})">${p.teethDone?'修改牙位':'開始標牙位'}</button></div></div>
   <div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">臨床照片</h2><label class="btn sm" for="pp-photo">＋上傳照片</label><input id="pp-photo" type="file" accept="image/*" multiple hidden onchange="act.addPhotos(this)"></div>
    ${(p.photos||[]).length?`<div class="vers">${p.photos.map(x=>`<div class="ver" style="padding:6px"><img src="${x.src}" style="width:100%;border-radius:6px;display:block"><label style="font-size:13px;display:block;margin-top:4px"><input type="checkbox" ${x.use?'checked':''} onchange="act.photoUse('${x.id}',this.checked)"> 放入計畫書</label><button class="btn sm" style="margin-top:4px" onclick="act.photoDel('${x.id}')">移除</button></div>`).join('')}</div>`:'<p class="muted" style="margin:0">上傳時會自動壓縮，勾選的照片會放進計畫書。</p>'}</div>
@@ -720,7 +699,7 @@ function flowTodos(){
     if(signedQ(p)&&(p.nv||[]).length){const none=p.nv.filter(n=>n.status==='none').length;if(none)out.push({p,t:`NV ${p.nv.length} 項：已約 ${p.nv.filter(n=>n.status==='booked').length}、未約 ${none}${mg}`,c:'y',to:()=>go('patient',{pid:p.id})})}
     if(p.trackDue&&p.trackDue<=t)out.push({p,t:`追蹤第 ${(p.track||[]).length+1} 次：${p.trackWhy||''}${mg}`,c:p.trackDue<t?'r':'y',to:()=>go('patient',{pid:p.id})});
     if(p.collect){const st=dcStat(p);if(!st.done){if(p.collect.date===t)out.push({p,t:`今日資收・資料上傳 ${st.up}/${st.total}${mg}`,c:'y',to:()=>go('patient',{pid:p.id})});else out.push({p,t:`逾期未上傳 ${st.up}/${st.total}（${md(p.collect.date)} 資收）${mg}`,c:'r',to:()=>go('patient',{pid:p.id})})}
-      else if(!p.design)out.push({p,t:`待醫師設計（${p.doctor||'醫師待補'}）`,c:'y',to:()=>go('patient',{pid:p.id})})}
+      else if(!p.design)out.push({p,kind:'doc',t:`待設計：資料已上傳`,c:'y',to:()=>go('patient',{pid:p.id})})}
     if(p.surgery&&p.surgery.date){const d=(new Date(p.surgery.date+'T00:00:00')-new Date(t+'T00:00:00'))/864e5;const st=dcStat(p);if(d>=0&&d<=7&&!st.done)out.push({p,t:`${md(p.surgery.date)} 手術：資料收集 ${st.up}/${st.total}${mg}`,c:'y',to:()=>go('patient',{pid:p.id})})}
     if(p.design&&p.design.status==='lack'&&!(p.redo&&p.redo.status)){const L=p.design.lack;out.push({p,t:`補件：${L.items.map(id=>(EXAMS.find(e=>e.id===id)||{name:id}).name).join('、')}｜最好 ${md(L.best)} 前、最晚 ${md(L.last)}${mg}`,c:t>L.best?'r':'y',to:()=>go('patient',{pid:p.id})})}
     if(p.design&&p.design.status==='done'&&!(p.surgery&&p.surgery.date))out.push({p,t:`可安排手術${mg}`,c:'g',to:()=>go('patient',{pid:p.id})});
@@ -750,22 +729,12 @@ function flowCards(p){
      <div class="row"><input class="i" type="date" id="sg-date" style="width:160px" value="${p.surgery?p.surgery.date||'':''}"><input class="i" id="sg-time" placeholder="手術時間 09:00" style="width:130px" value="${h(p.surgery?p.surgery.time||'':'')}"></div>
      <div class="row" style="margin-top:6px"><select class="i grow" id="sg-anes">${['局部麻醉','鎮靜舒眠','全身麻醉','AO4 舒眠','AO4 全麻'].map(x=>`<option ${p.surgery&&p.surgery.anes===x?'selected':''}>${x}</option>`).join('')}</select><input class="i grow" id="sg-at" placeholder="麻醉時間（例如 08:30–11:30）" value="${h(p.surgery?p.surgery.anesTime||'':'')}"><button class="btn sm pri" onclick="act.surgery()">儲存</button></div></div>`;}
   if(p.closed){const c=p.closed;out+=`<div class="card" style="border-color:var(--bad)"><h2>未成交結案</h2><p style="margin:0">原因：${h(c.reason)}・${h(c.at)}</p>${c.eval?`<p class="muted" style="margin:6px 0 0">自評表：${h(c.eval.main)}${c.eval.ours.length?'｜'+h(c.eval.ours.join('、')):''}${c.eval.traits.length?'｜病人特質：'+h(c.eval.traits.join('、')):''}</p>`:''}</div>`}
-  else if((p.track||[]).length||p.trackDue){out+=`<div class="card"><div class="row"><h2 class="grow" style="margin:0">追蹤紀錄</h2><button class="btn sm pri" onclick="act.trackOpen()">登記追蹤</button></div>
-    ${p.trackDue?`<p class="muted" style="margin:6px 0">下次追蹤：${md(p.trackDue)}・${h(p.trackWhy||'')}</p>`:''}
+  else if((p.track||[]).length||p.trackDue||(p.quotes.length&&['track','open'].includes(bucket(p)))){out+=`<div class="card" id="sec-track"><div class="row"><h2 class="grow" style="margin:0">追蹤紀錄</h2><button class="btn sm pri" onclick="act.trackOpen()">登記追蹤</button></div>
+    ${!(p.track||[]).length&&!p.trackDue?`<p class="muted" style="margin:6px 0">${bucket(p)==='track'?'報價已過期，請開始追蹤。':'報價期限內，有聯繫病人也可以先登記。'}</p>`:''}${p.trackDue?`<p class="muted" style="margin:6px 0">下次追蹤：${md(p.trackDue)}・${h(p.trackWhy||'')}</p>`:''}
     ${(p.track||[]).map((x,i)=>`<div class="muted" style="font-size:13px">第 ${i+1} 次・${h(x.at)}・${h(x.method)}・${h(x.result)}${x.note?'・'+h(x.note):''}</div>`).join('')}</div>`}
   return out;
 }
 /* ---- 醫師 case ---- */
-function viewMyCase(){
-  const u=me();const isDocUser=u.role==='醫師';
-  const D=isDocUser?u.name:(V.doc||'');
-  const list=S.patients.filter(p=>!D||docsOf(p).includes(D)).sort((a,b)=>(b.cts||0)-(a.cts||0)||String(b.created).localeCompare(String(a.created)));
-  return `<h1>${isDocUser?'我的 case':'醫師 case'}</h1>
-  ${isDocUser?'':`<div class="card"><label class="f" for="mc-doc">查看醫師</label><select class="i" id="mc-doc" onchange="go('mycase',{doc:this.value})"><option value="">全部醫師</option>${DOCTORS.map(d=>`<option ${d===D?'selected':''}>${d}</option>`).join('')}</select></div>`}
-  ${list.length?`<div class="mcgrid">${list.map(p=>{const st=caseStage(p);const ds=docsOf(p).filter(x=>!(isDocUser&&x===u.name)).map(x=>DOCCH[x]||x.slice(0,1)).join('／');
-    return `<button class="mc" onclick="go('patient',{pid:'${p.id}'})">${p.xray?`<img src="${p.xray}" alt="Pano">`:`<div class="mc-ph">${h(p.name)}<br><small>${p.panoNote?h(p.panoNote):'尚未上傳 Pano'}</small></div>`}
-     <div class="mc-t"><b>${h(p.name)}</b>｜${h(treatLabel(p))}${ds?'｜'+h(ds):''}</div><div class="mc-s"><span class="pill ${st[1]}">${h(st[0])}</span><span class="muted">建檔 ${h(p.created||'')}</span></div></button>`}).join('')}</div>`:'<p class="muted">目前沒有個案。</p>'}`;
-}
 function evalReport(){
   const rows=CONSULT.map(n=>{const ps=S.patients.filter(p=>p.consult===n);const cl=ps.filter(p=>p.closed&&p.closed.eval);const q=ps.filter(p=>p.quotes.length).length,sg=ps.filter(p=>signedQ(p)).length;
     const cnt=k=>cl.filter(p=>p.closed.eval.main===k).length;const tr={};cl.forEach(p=>p.closed.eval.traits.forEach(t=>tr[t]=(tr[t]||0)+1));const top=Object.entries(tr).sort((a,b)=>b[1]-a[1])[0];
@@ -777,6 +746,163 @@ function evalReport(){
 
 function fixTrack(p){const h2=(p.nv||[]).filter(n=>n.status==='hold'&&n.hold);if(!h2.length){if(!(p.track||[]).length)p.trackDue=null;return}
   const f=h2.map(n=>n.hold.follow).sort()[0];p.trackDue=f;p.trackWhy=h2.map(n=>(n.doc?(DOCCH[n.doc]||n.doc[0])+'｜':'')+n.task+'：'+n.hold.reason).join('；')}
+
+/* ===== 角色、個案分類、待辦分人 ===== */
+const myName=()=>{const u=me();return u?(u.link||u.name):''};
+const BOSS=['管理員','院長','個管主管'];
+const isBoss=()=>BOSS.includes(me().role);
+const isDocUser=()=>DOCTORS.includes(myName())&&['醫師','院長'].includes(me().role);
+const sigISO=q=>q&&q.signedAt?String(q.signedAt).replace(/\./g,'-'):'';
+function booked(p){return (p.nv||[]).some(n=>(n.dates||[]).length)||!!p.collect||!!(p.surgery&&p.surgery.date)}
+function quoteLeft(q){return q.validDays-Math.floor((Date.now()-q.ts)/864e5)}
+function bucket(p){
+  if(p.closed||p.done)return 'closed';
+  const sq=signedQ(p);
+  if(sq){if(booked(p))return 'tx';return sigISO(sq)===todayISO()?'won':'track'}
+  if(p.trackDue||(p.track||[]).length)return 'track';
+  const q=p.quotes.at(-1);if(q&&quoteLeft(q)<0)return 'track';
+  return 'open';
+}
+const BK={open:{t:'未成交',s:'報價期限內',c:'y'},track:{t:'追蹤',s:'過期待追回',c:'r'},won:{t:'成交',s:'已簽名待預約',c:'g'},tx:{t:'療程中',s:'',c:'g'},closed:{t:'已結案',s:'',c:''}};
+function caseLabel(p){
+  const b=bucket(p);
+  if(b==='closed')return [p.closed?'未成交結案':'已結案',''];
+  if(b==='open'){const q=p.quotes.at(-1);if(!p.teethDone&&!q)return ['待標牙位','y'];if(!q)return ['待貼醫囑','y'];return ['報價中・剩 '+Math.max(0,quoteLeft(q))+' 天','y']}
+  if(b==='track'){const sq=signedQ(p);return [(sq?'已成交未預約・追蹤':'追蹤中')+((p.track||[]).length?'（'+p.track.length+' 次）':''),'r']}
+  if(b==='won')return ['已成交・待預約','g'];
+  const st=caseStage(p);return [st[0].startsWith('已簽名')?'療程中':st[0],st[1]||'g'];
+}
+function patRow(p){const s=caseLabel(p);return `<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.name)}</b><span class="muted">${h(p.chart||'病歷號待補')}・${p.doctor?h(p.doctor)+' 醫師':'醫師待補'}・諮詢 ${h(p.consult||'待補')}・個管 ${h(p.mgr||'待補')}</span></div><span class="pill ${s[1]}">${h(s[0])}</span></div>`}
+function tiles(list,keys,cur,base){
+  return `<div class="tiles">${keys.map(k=>{const n=list.filter(p=>bucket(p)===k).length;return `<button class="tile ${cur===k?'on':''} ${BK[k].c}" onclick="go('${base.name}',Object.assign(${h(JSON.stringify(base.o||{}))},{bk:'${k}'}))"><b>${BK[k].t}</b><span class="n">${n}</span><span class="muted">${BK[k].s||'件'}</span></button>`}).join('')}</div>`;
+}
+function bucketList(list,k){const L=list.filter(p=>bucket(p)===k).sort((a,b)=>(b.cts||0)-(a.cts||0));tmp.rl=L.map(p=>p.id);
+  return `<div class="card"><div class="row" style="margin-bottom:4px"><h2 class="grow" style="margin:0">${BK[k].t}（${L.length}）</h2>${k==='open'||k==='track'?`<button class="btn sm" onclick="act.lostReport('${k}')">產出文字報表</button>`:''}</div><div class="list">${L.length?L.map(patRow).join(''):'<p class="muted">目前沒有。</p>'}</div></div>`}
+
+function suggestOf(p){const q=p.quotes.at(-1);const n=(p.track||[]).length;const last=(p.track||[]).at(-1);
+  if(signedQ(p))return '已簽名未預約，請約下次治療時間';
+  if(!q)return '尚未報價，請確認醫囑';
+  const left=quoteLeft(q);
+  if(left>3)return '報價期限內，可主動關心考慮狀況'+(p.urgent?'；醫師交代積極追蹤':'');
+  if(left>=0)return '報價快到期，建議致電確認意願';
+  if(!n)return '報價已過期，請開始第 1 次追蹤';
+  if(last&&/沒接|未讀/.test(last.result))return '前次沒聯繫上，建議換方式（電話／LINE）再聯繫';
+  return '持續追蹤，可說明分期方式或和醫師討論方案調整';}
+function lostText(ids){return ids.map(P).filter(Boolean).map((p,i)=>{const q=p.quotes.at(-1);const t=q?calc(p,q).total:null;const n=(p.track||[]).length;const last=(p.track||[]).at(-1);
+  return `${i+1}. ${p.name}｜諮詢 ${p.consult||'待補'}｜${p.doctor||'醫師待補'}\n   報價：${q?'第 '+q.v+' 版 NT$ '+money(t)+'（'+q.date+'）':'尚未報價'}${q&&!q.signed?'｜'+(quoteLeft(q)>=0?'剩 '+quoteLeft(q)+' 天':'已過期 '+(-quoteLeft(q))+' 天'):''}\n   追蹤：${n?n+' 次，最後 '+last.at+' '+last.method+' '+last.result+(last.note?'（'+last.note+'）':''):'尚未追蹤'}\n   建議：${suggestOf(p)}`}).join('\n\n')}
+function viewMyCase(){
+  if(isDocUser())return viewDocCase(myName(),true);
+  const n=myName();const list=S.patients.filter(p=>p.consult===n||p.mgr===n);
+  if(!CONSULT.includes(n))return `<h1>我的 case</h1><div class="card"><p style="margin:0">你的帳號還沒有對應到諮詢師或個管師。請管理員到「設定 → 人員帳號」設定「對應人員」。</p></div>`;
+  const k=V.bk||'open';
+  return `<h1>我的 case</h1><p class="muted" style="margin-top:-6px">我諮詢或負責的病人，共 ${list.length} 位</p>
+   <div class="sec-t">諮詢階段</div>${tiles(list,['open','track','won'],k,{name:'mycase'})}
+   <div class="sec-t">療程階段</div>${tiles(list,['tx','closed'],k,{name:'mycase'})}
+   ${bucketList(list,k)}`;
+}
+function viewPeople(key){
+  const cons=key==='consult';const title=cons?'諮詢管理':'個案管理';const name=cons?'cons':'mgrs';
+  const keys=cons?['open','track','won']:['tx','closed'];const who=V.who;
+  const pool=S.patients.filter(p=>keys.includes(bucket(p)));
+  if(!who){
+    const row=(n,label)=>{const L=pool.filter(p=>n==='__none'?!p[key]:p[key]===n);return `<div class="it" onclick="go('${name}',{who:'${n}'})"><div class="grow"><b>${h(label)}</b><span class="muted">${keys.map(k=>BK[k].t+' '+L.filter(p=>bucket(p)===k).length).join('・')}</span></div><span class="pill ${n==='__none'?'y':''}">${L.length}</span></div>`};
+    return `<h1>${title}</h1><p class="muted" style="margin-top:-6px">${cons?'療程開始以前的病人，依諮詢師分類':'療程中與已結案的病人，依個管師分類'}</p>
+    <div class="card list">${CONSULT.map(n=>row(n,n)).join('')}${pool.some(p=>!p[key])?row('__none','尚未指定'):''}</div>`;
+  }
+  const list=pool.filter(p=>who==='__none'?!p[key]:p[key]===who);const k=keys.includes(V.bk)?V.bk:keys[0];
+  return `<div class="row"><button class="btn sm" onclick="go('${name}')">← ${title}</button></div>
+   <h1 style="margin-top:12px">${who==='__none'?'尚未指定':h(who)}</h1>${tiles(list,keys,k,{name,o:{who}})}${bucketList(list,k)}`;
+}
+/* ---- 待辦 ---- */
+function allTodos(){
+  const out=[];
+  for(const p of S.patients){
+    if(p.closed||p.done)continue;const q=p.quotes.at(-1);const b=bucket(p);const mg=p.mgr?'（個管：'+p.mgr+'）':'';
+    if(!p.teethDone&&!q)out.push({p,t:'待標牙位',c:'y',kind:'mark',to:()=>go('mark',{pid:p.id})});
+    else if(!q)out.push({p,t:'待貼醫囑',c:'y',to:()=>go('orders',{pid:p.id})});
+    else if(!q.signed&&!signedQ(p)){const left=quoteLeft(q);
+      if(left<0&&!p.trackDue)out.push({p,t:'報價已過期，請開始追蹤'+mg,c:'r',to:()=>go('patient',{pid:p.id})});
+      else if(left>=0&&left<=1)out.push({p,t:'報價明天到期，要追蹤'+mg,c:'r',to:()=>go('plan',{pid:p.id,v:q.v})});
+      else if(left>1)out.push({p,t:'待簽名（還有 '+left+' 天）',c:'g',to:()=>go('plan',{pid:p.id,v:q.v})});}
+    if(b==='won')out.push({p,t:'今天已成交，請登記預約'+mg,c:'g',to:()=>go('patient',{pid:p.id})});
+    if(b==='track'&&signedQ(p)&&!p.trackDue)out.push({p,t:'已成交未預約，請追蹤'+mg,c:'r',to:()=>go('patient',{pid:p.id})});
+  }
+  return out.concat(flowTodos()).map(x=>Object.assign({kind:'mgr'},x));
+}
+function mineFilter(x){
+  const u=me();if(BOSS.includes(u.role))return true;if(x.kind==='mark')return true;const n=myName();
+  if(isDocUser())return x.kind==='doc'&&docsOf(x.p).includes(n);
+  if(x.kind==='doc')return false;return x.p.mgr===n||x.p.consult===n;
+}
+function myTodos(){return allTodos().filter(mineFilter).sort((a,b)=>(b.p.urgent?1:0)-(a.p.urgent?1:0)||(a.c==='r'?0:1)-(b.c==='r'?0:1))}
+function todo(){return myTodos()}
+function myPatients(){const n=myName();return isBoss()?S.patients:S.patients.filter(p=>p.mgr===n||p.consult===n)}
+function eveningBanner(){
+  if(new Date().getHours()<17)return '';
+  const L=myPatients().filter(p=>p.collect&&p.collect.date===todayISO()&&!dcStat(p).done&&!p.collect.cloud);
+  if(!L.length)return '';
+  return `<div class="card" style="background:#FBE1DA;border-color:var(--bad)"><h2 style="color:var(--bad)">下班前請確認：資料還沒上傳</h2><div class="list">${L.map(p=>`<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.name)}</b><span class="muted">今天資收・個管 ${h(p.mgr||'待補')}</span></div><span class="pill r">未上傳</span></div>`).join('')}</div></div>`;
+}
+function surgeryCard(){
+  const L=S.patients.filter(p=>p.surgery&&p.surgery.date===todayISO()).sort((a,b)=>String(a.surgery.time).localeCompare(String(b.surgery.time)));
+  if(!L.length)return '';
+  return `<div class="card" style="border-color:var(--orange)"><h2>今日手術</h2><div class="list">${L.map(p=>`<div class="it" onclick="go('patient',{pid:'${p.id}'})"><div class="grow"><b>${h(p.surgery.time||'時間待補')}・${h(p.name)}</b><span class="muted">${h(p.doctor||'醫師待補')}・${h(p.surgery.anes||'局部麻醉')}${p.surgery.anesTime?' '+h(p.surgery.anesTime):''}${p.surgery.items&&p.surgery.items.length?'・'+h(p.surgery.items.join('、')):''}</span></div></div>`).join('')}</div></div>`;
+}
+function meetingCard(){const d=rosterToday();if(!d||!/會|訓練/.test(d.note||''))return '';return `<div class="card" style="border-color:var(--orange);background:#FFF8EF"><h2 style="margin:0">今日會議：${h(d.note)}</h2></div>`}
+function adminTodos(){return []}
+function viewHome(){
+  const td=myTodos();tmp.todo=td;const rt=rosterTodos().concat(mktTodos(),adminTodos());tmp.rt=rt;
+  const u=me();
+  return `<h1>今日待辦</h1>
+  ${eveningBanner()}${meetingCard()}${surgeryCard()}${shootCard()}${mktHomeCard()}${dutyCard()}
+  ${rt.length?`<div class="card list">${rt.map((x,i)=>`<div class="it" ${x.to?`onclick="tmp.rt[${i}].to()"`:''}><div class="grow"><b>${h(x.t)}</b></div><span class="pill ${x.c}">提醒</span></div>`).join('')}</div>`:''}
+  <div class="card"><div class="row"><h2 class="grow" style="margin:0">${isBoss()?'全部個案提醒':'我的個案提醒'}</h2><button class="btn pri sm" onclick="go('newp')">＋新增病人</button></div>
+   <div class="list">${td.length?td.map((x,i)=>`<div class="it" onclick="tmp.todo[${i}].to()"><div class="grow"><b>${x.p.urgent?'<span class="pill r">優先</span> ':''}${h(x.p.name)}</b><span class="muted">${h(x.p.chart||'病歷號待補')}・${x.p.doctor?h(x.p.doctor)+' 醫師':'醫師待補'}</span></div><span class="pill ${x.c}">${h(x.t)}</span></div>`).join(''):`<p class="muted">${u.role==='臨床'?'目前沒有待標牙位的病人。':'目前沒有待辦。'}</p>`}</div></div>`;
+}
+/* ---- 下一步 ---- */
+const scrollTo_=id=>`(document.getElementById('${id}')||{scrollIntoView(){}}).scrollIntoView({behavior:'smooth',block:'start'})`;
+function needsData(p){const sq=signedQ(p);if(!sq)return false;return dcList(p).length>0||(calc(p,sq).dep||0)>0}
+function nextStep(p){
+  if(p.closed||p.done)return null;
+  const q=p.quotes.at(-1),sq=signedQ(p);
+  if(!p.xray&&!p.panoNote)return ['上傳 Pano 或填寫未拍原因',scrollTo_('sec-pano')];
+  if(!p.teethDone&&!q)return ['標牙位',`go('mark',{pid:'${p.id}'})`];
+  if(!q)return ['貼醫囑出報價',`act.newQuote('${p.id}')`];
+  if(!sq){if(bucket(p)==='track')return ['登記追蹤','act.trackOpen()'];return ['請病人簽名（第 '+q.v+' 版）',`go('plan',{pid:'${p.id}',v:${q.v}})`]}
+  if(!booked(p))return ['登記預約',scrollTo_('sec-nv')];
+  if(needsData(p)){
+    if(!p.collect)return ['登記資料收集','act.collect()'];
+    if(!p.collect.cloud)return ['確認資料已上傳雲端',scrollTo_('sec-dc')];
+    if(!p.design)return isDocUser()?['回報設計結果',scrollTo_('sec-design')]:['等待醫師設計',''];
+    if(p.design.status==='lack'&&!p.redo)return ['回報補件安排',scrollTo_('sec-design')];
+    if(p.design.status==='done'&&!(p.surgery&&p.surgery.date))return ['安排手術',scrollTo_('sec-surg')];
+  }
+  return ['療程中',''];
+}
+function nextBtn(p){const n=nextStep(p);if(!n)return '';return n[1]?`<button class="btn pri block next-btn" onclick="${n[1]}">下一步：${h(n[0])}</button>`:`<div class="next-btn wait">目前狀態：${h(n[0])}</div>`}
+/* ---- 閒置確認 ---- */
+let lastAct=Date.now();
+function idleGuard(e){
+  if(!S.me||!me()){lastAct=Date.now();return}
+  if(document.getElementById('idlebox'))return;
+  if(Date.now()-lastAct>30*60e3){e.stopPropagation();e.preventDefault();
+    modal(`<div id="idlebox"><h2>你是${h(me().name)}嗎？</h2><p class="muted">已經超過 30 分鐘沒有操作。</p><div class="row"><button class="btn grow" onclick="lastAct=Date.now();closeModal();act.logout()">不是，登出</button><button class="btn pri grow" onclick="lastAct=Date.now();closeModal()">是，繼續使用</button></div></div>`);return}
+  lastAct=Date.now();
+}
+document.addEventListener('pointerdown',idleGuard,true);document.addEventListener('keydown',idleGuard,true);
+function needDesign(p){return !!(p.collect&&p.collect.cloud&&!p.design&&!p.closed)}
+function viewDocCase(D,own){
+  if(!own)D=V.doc||'';
+  const all=S.patients.filter(p=>!D||docsOf(p).includes(D)).sort((a,b)=>(b.cts||0)-(a.cts||0)||String(b.created).localeCompare(String(a.created)));
+  const f=V.f||'design';const wait=all.filter(needDesign);const list=f==='design'?wait:all;
+  const nm=own?'mycase':'docs';const o=own?'{}':`{doc:'${h(D)}'}`;
+  return `<h1>${own?'我的 case':'醫師 case'}</h1>
+  ${own?'':`<div class="card"><label class="f" for="mc-doc">查看醫師</label><select class="i" id="mc-doc" onchange="go('docs',{doc:this.value})"><option value="">全部醫師</option>${DOCTORS.map(d=>`<option ${d===D?'selected':''}>${d}</option>`).join('')}</select></div>`}
+  <div class="tiles"><button class="tile ${f==='design'?'on':''} y" onclick="go('${nm}',Object.assign(${o},{f:'design'}))"><b>待設計</b><span class="n">${wait.length}</span><span class="muted">資料已上傳</span></button><button class="tile ${f==='all'?'on':''}" onclick="go('${nm}',Object.assign(${o},{f:'all'}))"><b>全部</b><span class="n">${all.length}</span><span class="muted">件</span></button></div>
+  ${list.length?`<div class="mcgrid">${list.map(p=>{const st=caseStage(p);const ds=docsOf(p).filter(x=>!(own&&x===D)).map(x=>DOCCH[x]||x.slice(0,1)).join('／');
+    return `<button class="mc" onclick="go('patient',{pid:'${p.id}'})">${p.xray?`<img src="${p.xray}" alt="Pano">`:`<div class="mc-ph">${p.photosCleared?'<b style="font-size:20px;letter-spacing:.2em">療程中</b>':h(p.name)+`<br><small>${p.panoNote?h(p.panoNote):'尚未上傳 Pano'}</small>`}</div>`}
+     <div class="mc-t"><b>${h(p.name)}</b>｜${h(treatLabel(p))}${ds?'｜'+h(ds):''}</div><div class="mc-s"><span class="pill ${st[1]}">${h(st[0])}</span><span class="muted">建檔 ${h(p.created||'')}</span></div></button>`}).join('')}</div>`:`<p class="muted">${f==='design'?'目前沒有待設計的個案。':'目前沒有個案。'}</p>`}`;
+}
 
 /* ---- 標牙位 ---- */
 function nextTooth(p){return ORDER.find(t=>!p.teeth[t])}
@@ -1166,7 +1292,7 @@ function drawChartsInPlan(){const p=P(V.pid);const q=p&&quoteOf(p,V.v);if(!q)ret
 function viewSettings(){
   const u=me();const admin=u.role==='管理員';
   return `<h1>設定</h1>
-  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}</span></div>${admin&&x.acc!==u.acc?`<select onchange="act.role('${h(x.acc)}',this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
+  <div class="card"><h2>人員帳號</h2><div class="list">${S.users.map(x=>`<div class="it"><div class="grow"><b>${h(x.name)}</b><span class="muted">帳號 ${h(x.acc)}${x.link&&x.link!==x.name?'・對應 '+h(x.link):''}</span></div>${admin?`${x.acc!==u.acc?`<select onchange="act.role('${h(x.acc)}',this.value)" class="mini">${ROLES.map(r=>`<option ${r===x.role?'selected':''}>${r}</option>`).join('')}</select>`:`<span class="pill">${h(x.role)}</span>`}<select class="mini" onchange="act.link('${h(x.acc)}',this.value)"><option value="">對應人員</option><optgroup label="醫師">${DOCTORS.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup><optgroup label="諮詢／個管">${CONSULT.map(d=>`<option ${x.link===d?'selected':''}>${d}</option>`).join('')}</optgroup></select>`:`<span class="pill">${h(x.role)}</span>`}</div>`).join('')}</div>
    ${admin?`<p class="muted" style="margin:8px 0 0">診所註冊碼：${REG_CODE}（正式版可在這裡更換）</p>`:''}</div>
   <div class="card"><div class="row" style="margin-bottom:6px"><h2 class="grow" style="margin:0">價目表</h2><button class="btn pri sm" onclick="tmp.addP=!tmp.addP;render()">＋新增療程</button></div>
    ${tmp.addP?`<div class="card" style="background:var(--cream)">
@@ -1359,6 +1485,8 @@ const act={
   },
   itemImg(pid,inp){const f=inp.files[0];if(!f)return;const it=priceOf(pid);compress(f,1000,0.8).then(d=>{S.itemImgs[pid]=S.itemImgs[pid]||[];S.itemImgs[pid].push({src:d,cap:it?it.name:''});save();toast('已加入圖片，出現此療程時會放進計畫書');render()})},
   itemImgClear(pid){delete S.itemImgs[pid];save();render()},
+  lostReport(k){const txt=`${BK[k].t}名單（${today()}）\n\n`+lostText(tmp.rl||[]);modal(`<h2>${BK[k].t}文字報表</h2><textarea class="i" id="lr-t" style="min-height:300px">${h(txt)}</textarea><div class="row" style="margin-top:10px"><button class="btn grow" onclick="closeModal()">關閉</button><button class="btn pri grow" onclick="const t=document.getElementById('lr-t');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})">複製</button></div>`)},
+  link(acc,v){const u=S.users.find(x=>x.acc===acc);u.link=v||undefined;save();toast('已設定 '+u.name+' 對應 '+(v||'本人姓名'));render()},
   role(acc,r){const u=S.users.find(x=>x.acc===acc);u.role=r;save();toast('已更新 '+u.name+' 的角色')},
   addPrice(){const g=id=>document.getElementById(id).value.trim();const name=g('ap-name');if(!name)return toast('請填療程名稱');
     const min=g('ap-min')===''?null:+g('ap-min'),max=g('ap-max')===''?min:+g('ap-max');
